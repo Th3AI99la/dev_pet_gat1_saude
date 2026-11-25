@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Painel do PET-Saúde Clima para explorar registros mensais de chuva, umidade, seca e queimadas em Goiás.">
+  <title>Clima em Goiás · PET-Saúde Clima</title>
+  <link rel="icon" href="assets/logo-pet-saude-clima.jpg" type="image/jpeg">
+  <link rel="preload" href="assets/poppins-regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/painel.css">
+  <link rel="stylesheet" href="css/mapa.css">
+  <script type="module" src="js/painel.js"></script>
+</head>
+<body>
+  <a class="skip" href="#painel">Pular para o painel</a>
+  <header class="topbar">
+    <div class="frame masthead">
+      <button type="button" id="menuToggle" class="menu-toggle" aria-controls="sideMenu" aria-expanded="false" aria-label="Abrir menu lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <a href="./" class="brand"><img src="assets/logo-pet-saude-clima.jpg" alt="" width="48" height="48"><span>PET-Saúde Clima<small>UEG · GAT 1 · Goiás</small></span></a>
+      <button type="button" id="themeToggle" class="theme-switch" aria-pressed="false" aria-label="Ativar modo escuro"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Escuro</span></button>
+    </div>
+  </header>
+
+  <div class="frame dashboard-shell">
+    <button type="button" id="menuBackdrop" class="menu-backdrop" aria-label="Fechar menu lateral" tabindex="-1" hidden></button>
+    <aside id="sideMenu" class="side-menu">
+      <nav aria-label="Seções da análise">
+        <a href="#territorio" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15"/></svg>Mapa</a>
+        <a href="#goias"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M5 15l4-5 4 2 6-7m-4 0h4v4"/></svg>Clima de Goiás</a>
+        <a href="#series"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-4 3 2 5-6"/></svg>Gráficos</a>
+        <a href="#recorrencia"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16m-11 4h2m3 0h2"/></svg>Recorrência</a>
+        <a href="#planilha"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 14h16M10 9v11"/></svg>Planilha completa</a>
+      </nav>
+      <a class="side-source" href="#metodo">Fontes e critérios</a>
+    </aside>
+
+  <main class="dashboard-main">
+    <section class="intro" aria-labelledby="titulo">
+      <div class="intro-copy">
+        <p class="eyebrow"><span class="status-dot"></span> Vigilância em saúde climática</p>
+        <h1 id="titulo">Clima em Goiás</h1>
+        <p>Séries de chuva, umidade, seca e queimadas da planilha de mapeamento regional.</p>
+      </div>
+      <div class="intro-period"><strong>2017–2026</strong><span>Registros mensais · 2026 parcial</span></div>
+    </section>
+
+    <div id="loading" class="loading" role="status">Carregando o painel…</div>
+    <section id="painel" aria-label="Painel interativo" hidden>
+      <section id="overviewStats" class="overview-stats" aria-label="Indicadores do recorte">
+        <div class="panel overview-stat"><span id="statMetric"></span><strong id="statValue"></strong><small id="statPlace"></small></div>
+        <div class="panel overview-stat"><span id="statMapLabel"></span><strong id="statMapValue"></strong><small id="statMapDetail"></small></div>
+        <div class="panel overview-stat"><span id="statYearLabel"></span><strong id="statYearValue"></strong><small>Meses com registro</small></div>
+      </section>
+
+      <div class="territory-grid">
+        <article class="panel map-panel" id="territorio" aria-labelledby="map-title">
+          <div class="card-head map-heading">
+            <h2 id="map-title">Mapa de Goiás</h2>
+            <div class="map-navigation">
+              <label class="city-select" id="mapCityField"><span>Município</span><select id="city"></select></label>
+              <a href="#goias" class="map-state-link">Histórico climático <span aria-hidden="true">↓</span></a>
+            </div>
+          </div>
+          <div class="map-wrap" id="mapStage">
+            <div class="map-topline">
+              <div class="map-stamp" aria-hidden="true"><span id="mapMetric"></span><strong id="mapDate"></strong></div>
+              <div class="map-tools" role="group" aria-label="Controles do mapa">
+                <div class="map-zoom">
+                  <button type="button" id="mapZoomOut" class="map-tool" aria-controls="map" aria-label="Reduzir o mapa" title="Reduzir (−)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                  <button type="button" id="mapZoomIn" class="map-tool" aria-controls="map" aria-label="Ampliar o mapa" title="Ampliar (+)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+                </div>
+                <button type="button" id="mapResetView" class="map-tool map-reset-view" aria-pressed="true" aria-controls="map" title="Mostrar Goiás inteiro (0)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
+                  Estado inteiro
+                </button>
+              </div>
+            </div>
+            <svg id="map" viewBox="0 0 600 475" aria-labelledby="mapSvgTitle"><title id="mapSvgTitle">Mapa dos municípios selecionados em Goiás</title></svg>
+            <div id="mapPreview" class="map-preview" aria-hidden="true"></div>
+            <p class="sr-only" id="mapViewStatus" role="status"></p>
+          </div>
+          <div class="map-dock">
+            <div id="metrics" class="metrics" role="group" aria-label="Indicador do mapa"></div>
+            <div class="map-footer">
+              <span id="mapScope"></span>
+              <span id="mapLegend"></span>
+              <span class="map-credit">Malha do IBGE</span>
+            </div>
+          </div>
+          <section id="timeline" class="playback" aria-labelledby="timelineTitle">
+            <div class="playback-head">
+              <div><h3 id="timelineTitle">Linha do tempo</h3><p id="period"></p></div>
+              <div class="timeline-actions">
+                <label class="year-select"><span>Ano</span><select id="year" data-panel-year></select></label>
+                <button type="button" id="play" class="play-action"><svg viewBox="0 0 24 24" id="playIcon" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg><span id="playLabel">Reproduzir</span></button>
+              </div>
+            </div>
+            <div id="monthRail" class="month-rail" role="group" aria-label="Selecione um mês do ano"></div>
+          </section>
+        </article>
+
+        <article class="panel detail-panel" aria-labelledby="placeName">
+          <div class="card-head">
+            <p id="placeRegion" class="eyebrow"></p>
+            <h2 id="placeName"></h2>
+            <p id="placeStation" class="muted"></p>
+          </div>
+          <div id="valueCard" class="value-card"></div>
+          <div id="monthDetail" class="month-detail"></div>
+          <section id="mapComparison" class="map-comparison" aria-labelledby="mapCompareTitle">
+            <h3 id="mapCompareTitle">Municípios no mês</h3>
+            <div id="mapRanking" class="map-ranking"></div>
+          </section>
+        </article>
+      </div>
+
+      <section class="panel state-panel" id="goias" aria-labelledby="stateTitle">
+        <div class="card-head">
+          <p class="eyebrow">Panorama estadual</p>
+          <h2 id="stateTitle">Mudanças do clima em Goiás</h2>
+          <p class="muted">Série histórica estadual e sinais para a vigilância climática.</p>
+        </div>
+        <div class="state-content">
+          <article id="stateClimate" class="state-climate" aria-labelledby="stateClimateTitle">
+            <div class="state-block-head">
+              <div><h3 id="stateClimateTitle">Clima de longo prazo</h3><p id="stateClimateNote" class="muted"></p></div>
+              <div class="state-metrics" role="group" aria-label="Indicador histórico de Goiás" hidden>
+                <button type="button" class="chart-switch" data-state-metric="temperature" aria-pressed="true">Temperatura</button>
+                <button type="button" class="chart-switch" data-state-metric="rain" aria-pressed="false">Chuva</button>
+              </div>
+            </div>
+            <div id="stateClimateChart"></div>
+            <p class="state-reference"><a href="https://goias.gov.br/imb/wp-content/uploads/sites/29/2025/12/Texto_para_discussao_003_2025_mudancas_climaticas_e_atividade_economica_em_goias.pdf" target="_blank" rel="noopener noreferrer">Estudo do IMB sobre Goiás · figuras 2 e 3</a></p>
+          </article>
+          <article class="state-watch" aria-labelledby="stateWatchTitle">
+            <h3 id="stateWatchTitle">Sinais e avisos</h3>
+            <div class="watch-calendar">
+              <div class="date-navigation" role="group" aria-label="Ano dos boletins de seca">
+                <button type="button" class="date-arrow" id="watchPreviousYear" aria-label="Ano anterior dos boletins">‹</button>
+                <strong id="watchYear"></strong>
+                <button type="button" class="date-arrow" id="watchNextYear" aria-label="Próximo ano dos boletins">›</button>
+              </div>
+              <div id="watchMonths" class="watch-months" role="group" aria-label="Mês do boletim"></div>
+            </div>
+            <div class="state-observation" id="stateObservation"></div>
+            <a href="#territorio" id="showStateDrought" class="map-state-link">Ver seca no mapa <span aria-hidden="true">↑</span></a>
+            <div class="official-notices">
+              <h4>Avisos vigentes</h4>
+              <p>Consulte os canais que publicam avisos para Goiás.</p>
+              <a href="https://goias.gov.br/meioambiente/srh/cimehgo-3/cimehgo-alertas-e-boletins/" target="_blank" rel="noopener noreferrer">Alertas e boletins do CIMEHGO <span aria-hidden="true">↗</span></a>
+              <a href="https://avisos.inmet.gov.br/" target="_blank" rel="noopener noreferrer">Avisos meteorológicos do INMET <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <article class="panel chart-panel" id="series" aria-labelledby="chartTitle">
+        <div class="card-head flex flex-wrap items-start justify-between gap-3">
+          <div><p class="eyebrow">Linha do tempo</p><h2 id="chartTitle"></h2><p id="chartCaption" class="muted"></p></div>
+          <div class="timeline-actions">
+            <label class="year-select"><span>Ano</span><select id="chartYear" data-panel-year></select></label>
+            <button type="button" id="chartRange" class="range-button" aria-pressed="false">Ver série 2017–2026</button>
+          </div>
+        </div>
+        <div class="chart-modes" role="group" aria-label="Tipo de gráfico">
+          <button type="button" class="chart-switch" data-chart="line" aria-pressed="true">Linha</button>
+          <button type="button" class="chart-switch" data-chart="column" aria-pressed="false">Colunas</button>
+          <button type="button" class="chart-switch" data-chart="pie" aria-pressed="false">Pizza</button>
+        </div>
+        <div class="chart-layout"><div id="annualChart" class="annual-chart"></div><aside id="chartSummary" class="chart-summary" aria-label="Resumo do gráfico"></aside></div>
+        <div id="chartLegend" class="chart-legend"></div>
+      </article>
+
+      <article class="panel recurrence-panel" id="recorrencia" aria-labelledby="recurrenceTitle">
+        <div class="card-head flex flex-wrap items-start justify-between gap-3">
+          <div><h2 id="recurrenceTitle">Recorrência mês a mês</h2>
+          <p class="muted" id="recurrencePlace"></p></div>
+          <label class="year-select"><span>Mês</span><select id="recurrenceMonth"></select></label>
+        </div>
+        <div class="recurrence-layout">
+          <div class="recurrence-plot">
+            <h3 id="recurrenceMonthTitle"></h3>
+            <ul id="recurrenceRows" aria-labelledby="recurrenceMonthTitle"></ul>
+          </div>
+          <div id="recurrenceDetail" class="recurrence-detail" aria-live="polite"></div>
+        </div>
+      </article>
+
+      <div class="extract flex flex-wrap items-center justify-between gap-3">
+        <div><strong>Leve a série para a planilha</strong><p id="exportLabel"></p></div>
+        <button type="button" id="exportCsv" class="export-button">Baixar CSV</button>
+      </div>
+    </section>
+
+    <section id="planilha" class="panel source-explorer" aria-labelledby="sourceTitle">
+      <div class="card-head flex flex-wrap items-start justify-between gap-3">
+        <div><p class="eyebrow">Base de trabalho</p><h2 id="sourceTitle">Planilha completa</h2><p id="sourceIntro" class="muted">Consulte os valores e textos das abas, com a numeração original das linhas.</p></div>
+        <a href="assets/planilha.json" download="planilha-gat1-integral.json" class="export-button">Baixar JSON integral</a>
+      </div>
+      <div class="source-controls">
+        <label><span>Aba</span><select id="sourceSheet" aria-label="Aba da planilha"></select></label>
+        <label><span>Buscar nesta aba</span><input id="sourceSearch" type="search" placeholder="Município, ano ou palavra" maxlength="160"></label>
+      </div>
+      <p id="sourceCounts" class="muted" aria-live="polite"></p>
+      <div class="source-grid" id="sourceGrid" role="region" aria-label="Valores da planilha" tabindex="0"></div>
+      <div class="source-pagination" id="sourcePagination">
+        <button class="geo-control" type="button" id="sourcePrev">Anterior</button><span id="sourcePage"></span><button class="geo-control" type="button" id="sourceNext">Próxima</button>
+      </div>
+    </section>
+
+    <section id="metodo" class="method" aria-labelledby="methodTitle">
+      <div>
+        <p class="eyebrow">Origem e leitura dos dados</p><h2 id="methodTitle">Como o painel foi feito</h2>
+        <p>Os municípios e os registros vêm da planilha do GAT 1. O mapa usa limites municipais do IBGE e pontos aproximados no centro dos municípios. As regiões são os rótulos usados na planilha.</p>
+        <p>Chuva e umidade média usam valores mensais explícitos no texto. Meses com dados insuficientes, duplicidade ou código de estação divergente ficam disponíveis na planilha completa. Os gráficos numéricos usam o critério de 80% quando a cobertura da variável é informada.</p>
+        <p>A aba de eventos mostra descrições da base. As médias de queimadas são os valores lançados na coluna da planilha, cuja unidade e método não estão documentados. A seca tem leitura estadual e registros de janeiro de 2021 a outubro de 2026. As sínteses nas abas de recorrência são apresentadas como constam na planilha.</p>
+        <p>O Boletim Mensal de Seca da SEMAD/CIMEHGO de abril de 2025 foi consultado para contextualizar a leitura estadual.</p>
+      </div>
+      <div class="source-links">
+        <h3>Fontes para consulta</h3>
+        <a href="https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=0#gid=0">Planilha de mapeamento do GAT 1</a>
+        <a href="https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=1626095015#gid=1626095015">Aba de recorrência de Goiânia</a>
+        <a href="https://portal.inmet.gov.br/dadoshistoricos">INMET · Dados meteorológicos históricos</a>
+        <a href="https://terrabrasilis.dpi.inpe.br/queimadas/bdqueimadas/">INPE · Banco de Dados de Queimadas</a>
+        <a href="https://monitordesecas.ana.gov.br/">ANA · Monitor de Secas</a>
+        <a href="https://goias.gov.br/meioambiente/srh/cimehgo-3/cimehgo-alertas-e-boletins/">SEMAD/CIMEHGO · Boletins de Goiás</a>
+        <a href="https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html">IBGE · Malha municipal</a>
+      </div>
+    </section>
+    <footer class="footer flex flex-wrap justify-between gap-2"><span>PET-Saúde Clima · GAT 1</span><span>Goiás · Série histórica</span></footer>
+  </main>
+  </div>
+</body>
+</html>

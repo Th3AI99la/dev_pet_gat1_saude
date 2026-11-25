@@ -1,0 +1,306 @@
+/*
+  Mapa temático de Goiás — carregar DEPOIS de painel.css.
+  Substitui o visual "painel escuro com efeitos" por uma base cartográfica neutra:
+  fundo liso, municípios coloridos por classes, contornos finos e rótulos com halo.
+  A cor do indicador (--tone) aparece só nos dados, nunca no fundo.
+*/
+
+/* ---------- Paleta do mapa ---------- */
+html {
+  --map-bg: #f0f3ef;
+  --map-land: #e0e7e1;
+  --map-mesh: #b4c2b8;
+  --map-outline: #51625a;
+  --map-halo: #f6f8f5;
+  --map-ramp-base: #e9eeea;
+  --map-hatch: #9aac9f;
+  --map-select: #16201c;
+  --map-chip: color-mix(in srgb, var(--surface) 95%, transparent);
+  --map-edge: var(--line-strong);
+  --map-light: var(--ink);
+  --map-shadow: 0 1px 2px rgb(20 35 28 / .1);
+}
+
+html[data-theme="dark"] {
+  --map-bg: #151e1a;
+  --map-land: #22302a;
+  --map-mesh: #3a4b42;
+  --map-outline: #8ea297;
+  --map-halo: #101814;
+  --map-ramp-base: #26342d;
+  --map-hatch: #5d7064;
+  --map-select: #f2f6ef;
+  --map-shadow: 0 1px 2px rgb(0 0 0 / .4);
+}
+
+/* ---------- Palco ---------- */
+html .territory-grid #mapStage {
+  background: var(--map-bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  transition: none;
+}
+html .territory-grid #mapStage::before { display: none; }
+
+html #mapStage #map {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 600 / 475;
+  max-height: clamp(380px, 72vh, 660px);
+  color: var(--map-hatch);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html #mapStage #map.map-pannable { cursor: grab; }
+html #mapStage #map.map-dragging,
+html #mapStage #map.map-dragging .marker { cursor: grabbing; }
+
+/* ---------- Camadas do mapa ---------- */
+html #mapStage #map .map-shadow { display: none; }
+html #mapStage #map:not(.map-state-only) .map-base { fill: var(--map-land); fill-opacity: 1; }
+html #mapStage #map.map-state-only .map-base { fill: var(--state-fill); fill-opacity: .92; }
+html #mapStage #map .map-base { stroke: var(--map-outline); stroke-width: 1.1px; stroke-linejoin: round; transition: fill .3s; }
+html #mapStage #map .map-mesh { stroke: var(--map-mesh); stroke-width: .6px; opacity: .9; }
+html #mapStage #map.map-state-only .map-mesh { opacity: .35; }
+html #mapStage #map .state-selection-outline { fill: none; stroke: var(--tone); stroke-width: 1.8px; vector-effect: non-scaling-stroke; opacity: 0; pointer-events: none; }
+html #mapStage #map.map-state-selected .state-selection-outline { opacity: .82; animation: state-selection 950ms ease-out 2; }
+@keyframes state-selection {
+  0% { opacity: .28; stroke-width: 1.8px; }
+  48% { opacity: 1; stroke-width: 4px; }
+  100% { opacity: .82; stroke-width: 1.8px; }
+}
+html #mapStage #map .map-north { fill: var(--map-outline); font-size: 11px; font-weight: 600; }
+
+/* ---------- Municípios ---------- */
+html #mapStage #map .marker { cursor: pointer; }
+html #mapStage #map .municipal-fill {
+  fill: var(--city-fill);
+  fill-opacity: 1;
+  stroke: var(--map-outline);
+  stroke-opacity: .6;
+  stroke-width: .8px;
+  stroke-dasharray: none;
+  transition: fill .35s, stroke .15s, stroke-width .15s;
+}
+html #mapStage #map .marker:hover .municipal-fill {
+  stroke: var(--ink);
+  stroke-opacity: 1;
+  stroke-width: 1.7px;
+}
+html #mapStage #map .marker:focus-visible .municipal-fill {
+  stroke: var(--focus-ring);
+  stroke-opacity: 1;
+  stroke-width: 3px;
+}
+html #mapStage #map .marker[aria-pressed="true"] .municipal-fill {
+  stroke: var(--map-select);
+  stroke-opacity: 1;
+  stroke-width: 2.3px;
+}
+
+html #mapStage #map .marker .pin { fill: var(--marker-tone,var(--ink)); stroke: var(--map-halo); stroke-width: 1.5px; transform: none; transition: none; }
+html #mapStage #map .map-marker-missing .pin { fill: #686e73; stroke: var(--map-halo); }
+html #mapStage #map .map-marker-missing { cursor: default; }
+html #mapStage #map .map-marker-missing:hover .municipal-fill { stroke: var(--map-outline); stroke-width: .8px; }
+html #mapStage #map .missing-symbol { display: none; stroke: white; stroke-width: 1.3px; pointer-events: none; }
+html #mapStage #map .map-marker-missing .missing-symbol { display: block; }
+html #mapStage #map .marker .pin-ring { fill: none; stroke: var(--map-select); stroke-width: 1.5px; opacity: 0; }
+html #mapStage #map .marker[aria-pressed="true"] .pin-ring,
+html #mapStage #map .marker:focus-visible .pin-ring { opacity: 1; }
+html #mapStage #map .marker:focus-visible .pin-ring { stroke: var(--focus-ring); stroke-width: 2px; }
+html #mapStage #map .marker line { stroke: var(--map-outline); stroke-width: 1px; opacity: .65; }
+html #mapStage #map .marker text {
+  fill: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  stroke: var(--map-halo);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+html #mapStage #map .marker[aria-pressed="true"] text { font-weight: 700; }
+html #mapStage #map .marker .marker-reading { font-size: 10.5px; font-weight: 500; fill: var(--muted); }
+html #mapStage #map .marker .hit { fill: transparent; }
+
+/* Telas estreitas: só o município selecionado ou sob o dedo mostra o nome */
+html #mapStage #map.map-labels-minimal .marker:not([aria-pressed="true"], .map-reference, :hover, :focus-visible) :is(text, line) { display: none; }
+
+/* ---------- Informações sobre o mapa ---------- */
+html #mapStage .map-topline {
+  position: absolute;
+  inset: 12px 12px auto;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: none;
+}
+
+html #mapStage .map-stamp,
+html #mapStage .map-preview {
+  background: var(--map-chip);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  box-shadow: var(--map-shadow);
+  color: var(--ink);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+html #mapStage .map-stamp { display: grid; gap: 1px; padding: 7px 12px; }
+html #mapStage .map-stamp span { color: var(--muted); font-size: .72rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+html #mapStage .map-stamp strong { color: var(--ink); font-size: .95rem; font-weight: 600; }
+html .map-panel.is-playing #mapStage .map-stamp span::before { background: var(--accent); }
+
+html #mapStage .map-preview {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px 14px;
+  max-width: min(390px, calc(100% - 24px));
+  padding: 8px 12px;
+  pointer-events: none;
+}
+html #mapStage .map-preview div { display: grid; gap: 1px; }
+html #mapStage .map-preview strong { color: var(--ink); font-size: .84rem; }
+html #mapStage .map-preview span { color: var(--muted); font-size: .72rem; }
+html #mapStage .map-preview small { color: var(--accent); font-size: .68rem; font-weight: 600; }
+html #mapStage .map-preview p {
+  color: var(--ink);
+  font-size: .84rem;
+  font-weight: 600;
+  border-inline-start: 1px solid var(--line-strong);
+  padding-inline-start: 12px;
+}
+
+/* ---------- Controles ---------- */
+html #mapStage .map-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; pointer-events: auto; }
+html #mapStage .map-zoom { display: inline-flex; }
+html #mapStage .map-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: var(--map-shadow);
+  color: var(--ink);
+  font-size: .76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+html #mapStage .map-tool svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9px; stroke-linecap: round; stroke-linejoin: round; }
+html #mapStage .map-tool:hover:enabled { background: var(--surface-hover); border-color: var(--line-strong); }
+html #mapStage .map-zoom .map-tool { padding-inline: 0; }
+html #mapStage .map-zoom .map-tool:first-child { border-radius: 6px 0 0 6px; }
+html #mapStage .map-zoom .map-tool:last-child { border-radius: 0 6px 6px 0; margin-inline-start: -1px; }
+html #mapStage .map-tool.map-reset-view[aria-pressed="true"] { background: var(--surface-alt); color: var(--muted); }
+
+html #mapStage .map-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 4;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: .76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity .2s, transform .2s;
+}
+html #mapStage .map-hint.is-visible { opacity: .94; transform: translate(-50%, 0); }
+
+/* ---------- Legenda por classes ---------- */
+html .map-footer .map-scale { gap: 7px; }
+html .map-steps { display: inline-flex; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 3px; }
+html .map-steps b {
+  display: block;
+  width: clamp(16px, 2.4vw, 30px);
+  height: 10px;
+  background: color-mix(in srgb, var(--map-tone) var(--step), var(--map-ramp-base));
+}
+html .map-key i { border-color: var(--line-strong); }
+
+/* ---------- Lista de municípios (painel lateral) ---------- */
+html .map-ranking { gap: 2px; }
+html .map-ranking button { min-height: 34px; padding: 6px 8px; font-size: .76rem; }
+html .map-ranking button i {
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(var(--tone), var(--tone)) left / var(--fill) 100% no-repeat, var(--line);
+  transition: background-size .35s cubic-bezier(.23, 1, .36, 1);
+}
+
+/* ---------- Toque ---------- */
+@media (pointer: coarse) {
+  html #mapStage #map .marker .hit { r: 26px; }
+  html #mapStage .map-tool { min-width: 42px; min-height: 42px; }
+  html .map-ranking button { min-height: 42px; }
+}
+
+/* ---------- Celulares e tablets estreitos ---------- */
+@media (max-width: 720px) {
+  html #mapStage .map-topline {
+    position: relative;
+    inset: auto;
+    align-items: center;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    pointer-events: auto;
+  }
+  html #mapStage .map-stamp {
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html #mapStage .map-preview {
+    position: relative;
+    inset: auto;
+    justify-content: space-between;
+    max-width: none;
+    min-height: 48px;
+    padding: 9px 12px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html #mapStage .map-tool { box-shadow: none; }
+  html #mapStage .map-hint { bottom: 64px; }
+  html #mapStage #map { max-height: none; }
+}
+
+@media (max-width: 420px) {
+  html #mapStage .map-reset-view { font-size: 0; gap: 0; padding-inline: 0; min-width: 36px; }
+}
