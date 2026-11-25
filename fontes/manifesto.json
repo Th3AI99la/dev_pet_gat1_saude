@@ -34,5 +34,14 @@
     "baixa_em": "2026-11-25",
     "bytes": 194060,
     "sha256": "d73b419ae68447077d63744f86850e8442312206ecef8ecbf173386eaeada08e"
+  },
+  {
+    "id": "IMG-006",
+    "arquivo": "fontes/originais/logo.jfif",
+    "bytes": 58300,
+    "sha256": "79e6e10ccc5411a1e5228b6e2ea0bbbb64ad2cea01c65e16b0fe94c3dedca6a5",
+    "recebido_em": "2026-11-25",
+    "fonte": "Imagem fornecida por Thalles",
+    "uso_no_site": "site/assets/logo-pet-saude-clima.jpg"
   }
 ]

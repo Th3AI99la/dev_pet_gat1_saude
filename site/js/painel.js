@@ -109,7 +109,7 @@ function showOverview() {
   $('statMapDetail').textContent = statewide ? 'Monitor de Secas' : 'Municípios com registro';
   $('statYearLabel').textContent = `Cobertura em ${year}`;
   $('statYearValue').textContent = `${valid}/12`;
-  drawMap({ scope: statewide ? 'state' : 'municipal', city: state.city, entries, maximum: mapMaximum(), display, tone: info.tone, categories: CATEGORIES, numeric: !categorical(state.metric) });
+  drawMap({ scope: statewide ? 'state' : 'municipal', city: state.city, entries, selected, maximum: mapMaximum(), display, tone: info.tone, categories: CATEGORIES, numeric: !categorical(state.metric), date: labelDate(state.period), metric: info.option });
 }
 
 function showReading() {
@@ -121,6 +121,11 @@ function showReading() {
   $('placeStation').textContent = statewide ? 'Monitor de Secas · ANA / CIMEHGO' : metric === 'fire' ? 'BDQueimadas · valores da planilha' : `INMET · referência ${municipality.station}`;
   const { value, record } = reading();
   const unit = METRICS[metric].unit;
+  const previousPeriod = periods[periods.indexOf(period) - 1];
+  const previous = previousPeriod ? reading(previousPeriod).value : null;
+  const difference = isNumber(value) && isNumber(previous) ? value - previous : null;
+  const changeUnit = metric === 'humidity' ? ' p.p.' : unit ? ` ${unit}` : '';
+  const change = difference === null ? '' : `<p class="month-change"><strong>${difference > 0 ? '+' : ''}${escape(NUM.format(difference))}${changeUnit}</strong> em relação a ${escape(labelDate(previousPeriod).toLowerCase())}</p>`;
   const wideLabel = !isNumber(value);
   let context = '';
   if (metric === 'rain') context = 'Acumulado mensal registrado';
@@ -130,7 +135,7 @@ function showReading() {
   if (metric === 'events') context = 'Classificação ou descrição registrada na planilha';
   if (value === null) context = statusText(record) || (metric === 'fire' && record?.original ? `Registro na planilha: ${record.original}` : 'A planilha não traz um valor utilizável neste mês.');
   const numeric = isNumber(value) ? `${NUM.format(value)}${unit ? ` <span>${escape(unit)}</span>` : ''}` : escape(display(value));
-  $('valueCard').innerHTML = `<p class="eyebrow">${escape(METRICS[metric].title)}</p><p class="reading${wideLabel ? ' label' : ''}">${numeric}</p><p class="context">${escape(context)}</p>`;
+  $('valueCard').innerHTML = `<p class="eyebrow">${escape(METRICS[metric].title)}</p><p class="reading${wideLabel ? ' label' : ''}">${numeric}</p><p class="context">${escape(context)}</p>${change}`;
   const { event, detail, source, row, rows, note } = record ?? {};
   const citedRows = row ? `Linha ${row} · ${data.sheet}` : rows?.length ? `Linhas ${rows.join(', ')} · ${data.sheet}` : '';
   const frame = $('monthDetail');
@@ -269,15 +274,17 @@ function showSeason() {
 function showSelection() {
   const year = yearOf(state.period);
   $('year').value = year;
+  $('previousYear').disabled = year === years[0];
+  $('nextYear').disabled = year === years.at(-1);
   const chartRange = $('chartRange');
   chartRange.setAttribute('aria-pressed', String(state.range === 'all'));
   chartRange.textContent = state.range === 'all' ? `Voltar para ${year}` : 'Ver série 2017–2026';
-  player.render(year, numberMonth(state.period), MONTHS.map((_, index) => {
+  player.render(state.period, MONTHS.map((_, index) => {
     const { value } = reading(monthDate(year, index + 1));
     return { label: isNumber(value) || value === null ? display(value) : 'Com registro', available: value !== null };
   }));
   $('city').value = state.city;
-  $('city').disabled = state.metric === 'drought';
+  $('mapCityField').hidden = state.metric === 'drought';
   for (const button of $('metrics').querySelectorAll('[data-metric]')) button.setAttribute('aria-pressed', button.dataset.metric === state.metric);
   for (const button of document.querySelectorAll('[data-chart]')) {
     button.disabled = button.dataset.chart === 'line' && categorical(state.metric);
@@ -306,9 +313,10 @@ function setPeriod(period) {
   if (!periods.includes(period)) return;
   state.period = period;
   render();
+  const card = $('valueCard');
+  card.getAnimations().forEach(animation => animation.cancel());
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    $('valueCard').getAnimations().forEach(animation => animation.cancel());
-    $('valueCard').animate([{ opacity: .7, transform: 'translateY(2px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 240, easing: 'ease-out' });
+    card.animate([{ opacity: .7, transform: 'translateY(2px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 240, easing: 'ease-out' });
   }
 }
 
@@ -353,11 +361,11 @@ function mount() {
   years = Array.from({ length: data.end - data.start + 1 }, (_, index) => data.start + index);
   periods = years.flatMap(year => SHORT.map((_, index) => monthDate(year, index + 1)));
   drawMap = mountMap(map, data.municipalities, selectCity);
-  player = mountPlayback(MONTHS, month => setPeriod(monthDate(yearOf(state.period), month)));
+  player = mountPlayback(MONTHS, periods, setPeriod);
   $('metrics').innerHTML = Object.entries(METRICS).map(([id, info]) => `<button type="button" class="metric" data-metric="${id}" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="${info.icon}"></path></svg>${info.option}</button>`).join('');
   $('metrics').addEventListener('click', event => {
     const button = event.target.closest('[data-metric]');
-    if (!button) return;
+    if (!button || state.metric === button.dataset.metric) return;
     stop();
     state.metric = button.dataset.metric;
     render();
@@ -371,7 +379,10 @@ function mount() {
   $('city').innerHTML = Array.from(byRegion, ([region, options]) => `<optgroup label="${escape(region)}">${options.join('')}</optgroup>`).join('');
   $('city').addEventListener('change', event => selectCity(event.target.value));
   $('year').innerHTML = years.map(year => `<option value="${year}">${year}${year === data.end ? ' (parcial)' : ''}</option>`).join('');
-  $('year').addEventListener('change', event => { stop(); setPeriod(monthDate(event.target.value, numberMonth(state.period))); });
+  const selectYear = year => { stop(); setPeriod(monthDate(year, numberMonth(state.period))); };
+  $('year').addEventListener('change', event => selectYear(event.target.value));
+  $('previousYear').addEventListener('click', () => selectYear(yearOf(state.period) - 1));
+  $('nextYear').addEventListener('click', () => selectYear(yearOf(state.period) + 1));
   $('chartRange').addEventListener('click', () => { stop(); state.range = state.range === 'year' ? 'all' : 'year'; render(); });
   for (const button of document.querySelectorAll('[data-chart]')) {
     button.addEventListener('click', () => { stop(); state.chart = button.dataset.chart; render(); });

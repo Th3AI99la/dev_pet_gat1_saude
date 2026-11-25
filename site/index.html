@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Painel do PET-Saúde Clima para explorar registros mensais de chuva, umidade, seca e queimadas em Goiás.">
   <title>Clima em Goiás · PET-Saúde Clima</title>
-  <link rel="icon" href="assets/marca.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/logo-pet-saude-clima.jpg" type="image/jpeg">
   <link rel="preload" href="assets/poppins-regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/painel.css">
   <script type="module" src="js/painel.js"></script>
@@ -15,7 +15,7 @@
   <header class="topbar">
     <div class="frame masthead">
       <button type="button" id="menuToggle" class="menu-toggle" aria-controls="sideMenu" aria-expanded="false" aria-label="Abrir menu lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-      <a href="./" class="brand"><img src="assets/marca.svg" alt="" width="40" height="40"><span>PET-Saúde Clima<small>GAT 1 · Goiás</small></span></a>
+      <a href="./" class="brand"><img src="assets/logo-pet-saude-clima.jpg" alt="" width="48" height="48"><span>PET-Saúde Clima<small>UEG · GAT 1 · Goiás</small></span></a>
       <button type="button" id="themeToggle" class="theme-switch" aria-pressed="false" aria-label="Ativar modo escuro"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Escuro</span></button>
     </div>
   </header>
@@ -44,14 +44,6 @@
 
     <div id="loading" class="loading" role="status">Carregando o painel…</div>
     <section id="painel" aria-label="Painel interativo" hidden>
-      <div class="toolbar panel dashboard-toolbar">
-        <div id="metrics" class="metrics" role="group" aria-label="Indicador"></div>
-        <div class="scope-fields">
-          <label class="city-select"><span>Município</span><select id="city" aria-label="Município"></select></label>
-          <label class="year-select"><span>Ano</span><select id="year" aria-label="Ano do painel"></select></label>
-        </div>
-      </div>
-
       <section id="overviewStats" class="overview-stats" aria-label="Indicadores do recorte">
         <div class="panel overview-stat"><span id="statMetric"></span><strong id="statValue"></strong><small id="statPlace"></small></div>
         <div class="panel overview-stat"><span id="statMapLabel"></span><strong id="statMapValue"></strong><small id="statMapDetail"></small></div>
@@ -60,16 +52,47 @@
 
       <div class="territory-grid">
         <article class="panel map-panel" id="territorio" aria-labelledby="map-title">
-          <div class="card-head flex flex-wrap items-start justify-between gap-2">
-            <div><p class="eyebrow">Território</p><h2 id="map-title">Municípios da planilha</h2></div>
-            <span id="mapScope" class="soft-tag"></span>
+          <div class="card-head map-heading">
+            <h2 id="map-title">Mapa de Goiás</h2>
+            <label class="city-select" id="mapCityField"><span>Município</span><select id="city"></select></label>
           </div>
           <div class="map-wrap">
+            <div class="map-stamp" aria-hidden="true"><span id="mapMetric"></span><strong id="mapDate"></strong></div>
             <svg id="map" viewBox="0 0 600 475" aria-labelledby="mapSvgTitle"><title id="mapSvgTitle">Mapa dos municípios selecionados em Goiás</title></svg>
+            <div id="mapPreview" class="map-preview" aria-hidden="true"></div>
           </div>
-          <div class="map-footer flex flex-wrap items-center justify-between gap-2">
-            <span id="mapLegend"></span><span class="map-credit">Malha simplificada · IBGE</span>
+          <div class="map-dock">
+            <div id="metrics" class="metrics" role="group" aria-label="Indicador do mapa"></div>
+            <div class="map-footer">
+              <span id="mapScope"></span>
+              <span id="mapLegend"></span>
+              <span class="map-credit">Malha do IBGE</span>
+            </div>
           </div>
+          <section id="timeline" class="playback" aria-labelledby="timelineTitle">
+            <div class="playback-head">
+              <div><h3 id="timelineTitle">Linha do tempo</h3><p id="period"></p></div>
+              <div class="year-tools">
+                <button type="button" id="previousYear" class="step-control" aria-label="Ano anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+                <label class="year-select"><span class="sr-only">Ano do painel</span><select id="year"></select></label>
+                <button type="button" id="nextYear" class="step-control" aria-label="Próximo ano"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+              </div>
+            </div>
+            <div id="monthRail" class="month-rail" role="group" aria-label="Selecione um mês do ano"></div>
+            <div class="player-bar">
+              <div class="playback-controls">
+                <button type="button" id="play" class="play-action"><svg viewBox="0 0 24 24" id="playIcon" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg><span id="playLabel">Reproduzir</span></button>
+                <button type="button" id="restartPlay" class="step-control" aria-label="Voltar ao início da reprodução" title="Voltar ao início"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V3m0 5h5M4.5 8a8 8 0 1 1-.2 8"/></svg></button>
+              </div>
+              <label class="player-field"><span>Intervalo</span><select id="playRange"><option value="year">Ano selecionado</option><option value="all">2017–2026</option></select></label>
+              <label class="player-field"><span>Velocidade</span><select id="playSpeed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+            </div>
+            <div class="time-scrub">
+              <input type="range" id="playSeek" aria-label="Ir para um mês da reprodução">
+              <div class="time-scale" aria-hidden="true"><span id="playStart"></span><span id="playPosition"></span><span id="playEnd"></span></div>
+            </div>
+            <p class="sr-only" id="playStatus" role="status"></p>
+          </section>
         </article>
 
         <article class="panel detail-panel" aria-labelledby="placeName">
@@ -78,18 +101,6 @@
             <h2 id="placeName"></h2>
             <p id="placeStation" class="muted"></p>
           </div>
-          <section id="timeline" class="playback" aria-labelledby="period">
-            <div class="playback-head">
-              <div><p class="eyebrow">Linha do tempo</p><h2 id="period"></h2></div>
-              <div class="playback-controls">
-                <button type="button" id="play" class="play-action"><svg viewBox="0 0 24 24" id="playIcon" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg><span id="playLabel">Reproduzir</span></button>
-                <button type="button" id="playSpeed" class="speed-control" aria-label="Velocidade da reprodução: 1 vez. Clique para alterar.">1×</button>
-              </div>
-            </div>
-            <div class="playback-progress" aria-hidden="true"><div id="playbackFill"></div></div>
-            <div id="monthRail" class="month-rail" role="group" aria-label="Selecione um mês do ano"></div>
-            <p class="sr-only" id="playStatus" role="status"></p>
-          </section>
           <div id="valueCard" class="value-card"></div>
           <div id="monthDetail" class="month-detail"></div>
           <section id="mapComparison" class="map-comparison" aria-labelledby="mapCompareTitle">
