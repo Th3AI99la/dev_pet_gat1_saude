@@ -13,14 +13,26 @@
 <body>
   <a class="skip" href="#painel">Pular para o painel</a>
   <header class="topbar">
-    <div class="frame flex items-center justify-between gap-4">
+    <div class="frame masthead">
+      <button type="button" id="menuToggle" class="menu-toggle" aria-controls="sideMenu" aria-expanded="false" aria-label="Abrir menu lateral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <a href="./" class="brand"><img src="assets/marca.svg" alt="" width="40" height="40"><span>PET-Saúde Clima<small>GAT 1 · Goiás</small></span></a>
-      <nav class="flex items-center gap-5" aria-label="Navegação principal"><a href="#painel">Painel</a><a href="#planilha">Planilha</a></nav>
       <button type="button" id="themeToggle" class="theme-switch" aria-pressed="false" aria-label="Ativar modo escuro"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Escuro</span></button>
     </div>
   </header>
 
-  <main class="frame">
+  <div class="frame dashboard-shell">
+    <button type="button" id="menuBackdrop" class="menu-backdrop" aria-label="Fechar menu lateral" tabindex="-1" hidden></button>
+    <aside id="sideMenu" class="side-menu">
+      <nav aria-label="Seções da análise">
+        <a href="#territorio" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15"/></svg>Mapa</a>
+        <a href="#series"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-4 3 2 5-6"/></svg>Gráficos</a>
+        <a href="#recorrencia"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16m-11 4h2m3 0h2"/></svg>Recorrência</a>
+        <a href="#planilha"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 14h16M10 9v11"/></svg>Planilha completa</a>
+      </nav>
+      <a class="side-source" href="#metodo">Fontes e critérios</a>
+    </aside>
+
+  <main class="dashboard-main">
     <section class="intro" aria-labelledby="titulo">
       <div class="intro-copy">
         <p class="eyebrow"><span class="status-dot"></span> Vigilância em saúde climática</p>
@@ -32,32 +44,31 @@
 
     <div id="loading" class="loading" role="status">Carregando o painel…</div>
     <section id="painel" aria-label="Painel interativo" hidden>
-      <nav class="jump-links" aria-label="Seções da análise"><a href="#territorio">Mapa</a><a href="#series">Gráficos</a><a href="#recorrencia">Recorrência</a><a href="#planilha">Planilha completa</a></nav>
-      <div class="toolbar panel flex flex-wrap items-center justify-between gap-4">
+      <div class="toolbar panel dashboard-toolbar">
         <div id="metrics" class="metrics" role="group" aria-label="Indicador"></div>
-        <label class="city-select"><span>Município</span><select id="city" aria-label="Município"></select></label>
+        <div class="scope-fields">
+          <label class="city-select"><span>Município</span><select id="city" aria-label="Município"></select></label>
+          <label class="year-select"><span>Ano</span><select id="year" aria-label="Ano do painel"></select></label>
+        </div>
       </div>
 
-      <div class="overview grid gap-5">
+      <section id="overviewStats" class="overview-stats" aria-label="Indicadores do recorte">
+        <div class="panel overview-stat"><span id="statMetric"></span><strong id="statValue"></strong><small id="statPlace"></small></div>
+        <div class="panel overview-stat"><span id="statMapLabel"></span><strong id="statMapValue"></strong><small id="statMapDetail"></small></div>
+        <div class="panel overview-stat"><span id="statYearLabel"></span><strong id="statYearValue"></strong><small>Meses com registro</small></div>
+      </section>
+
+      <div class="territory-grid">
         <article class="panel map-panel" id="territorio" aria-labelledby="map-title">
           <div class="card-head flex flex-wrap items-start justify-between gap-2">
             <div><p class="eyebrow">Território</p><h2 id="map-title">Municípios da planilha</h2></div>
-            <span id="mapScope" class="soft-tag">7 municípios · 5 regiões</span>
-          </div>
-          <div class="geo-controls" aria-label="Camadas e zoom do mapa">
-            <label class="geo-control"><span>Camada</span><select id="mapLayer"><option value="points">Municípios</option><option value="metric">Indicador no mês</option><option value="coverage">Disponibilidade no mês</option></select></label>
-            <label class="geo-control map-check"><input type="checkbox" id="mapMesh" checked> Limites</label>
-            <div class="geo-zoom" role="group" aria-label="Zoom do mapa">
-              <button class="geo-control" type="button" id="zoomIn" aria-label="Aproximar mapa">+</button>
-              <button class="geo-control" type="button" id="zoomOut" aria-label="Afastar mapa">−</button>
-              <button class="geo-control" type="button" id="zoomReset">Recentrar</button>
-            </div>
+            <span id="mapScope" class="soft-tag"></span>
           </div>
           <div class="map-wrap">
             <svg id="map" viewBox="0 0 600 475" aria-labelledby="mapSvgTitle"><title id="mapSvgTitle">Mapa dos municípios selecionados em Goiás</title></svg>
           </div>
           <div class="map-footer flex flex-wrap items-center justify-between gap-2">
-            <span id="mapLegend"><i class="selected-dot"></i> Município selecionado</span><span>Malha simplificada · IBGE</span>
+            <span id="mapLegend"></span><span class="map-credit">Malha simplificada · IBGE</span>
           </div>
         </article>
 
@@ -67,33 +78,37 @@
             <h2 id="placeName"></h2>
             <p id="placeStation" class="muted"></p>
           </div>
-          <div class="period-box">
-            <div class="flex items-center justify-between gap-3">
-              <div><p class="eyebrow">Mês selecionado</p><strong id="period"></strong></div>
-              <div class="step-controls flex items-center gap-2" aria-label="Navegação mensal">
-                <button type="button" id="previous" title="Mês anterior" aria-label="Mês anterior">‹</button>
-                <button type="button" id="next" title="Próximo mês" aria-label="Próximo mês">›</button>
+          <section id="timeline" class="playback" aria-labelledby="period">
+            <div class="playback-head">
+              <div><p class="eyebrow">Linha do tempo</p><h2 id="period"></h2></div>
+              <div class="playback-controls">
+                <button type="button" id="play" class="play-action"><svg viewBox="0 0 24 24" id="playIcon" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg><span id="playLabel">Reproduzir</span></button>
+                <button type="button" id="playSpeed" class="speed-control" aria-label="Velocidade da reprodução: 1 vez. Clique para alterar.">1×</button>
               </div>
             </div>
-            <label class="sr-only" for="timeline">Mês na linha do tempo</label>
-            <input type="range" id="timeline" min="0" value="0" step="1">
-            <div class="range-caption flex items-center justify-between gap-2"><span>2017</span><button type="button" id="play"><span id="playIcon" aria-hidden="true">▶</span><span id="playLabel">Reproduzir</span></button><span>2026</span></div>
-          </div>
-          <div id="valueCard" class="value-card" aria-live="polite"></div>
+            <div class="playback-progress" aria-hidden="true"><div id="playbackFill"></div></div>
+            <div id="monthRail" class="month-rail" role="group" aria-label="Selecione um mês do ano"></div>
+            <p class="sr-only" id="playStatus" role="status"></p>
+          </section>
+          <div id="valueCard" class="value-card"></div>
           <div id="monthDetail" class="month-detail"></div>
+          <section id="mapComparison" class="map-comparison" aria-labelledby="mapCompareTitle">
+            <h3 id="mapCompareTitle">Municípios no mês</h3>
+            <div id="mapRanking" class="map-ranking"></div>
+          </section>
         </article>
       </div>
+
 
       <article class="panel chart-panel" id="series" aria-labelledby="chartTitle">
         <div class="card-head flex flex-wrap items-start justify-between gap-3">
           <div><p class="eyebrow">Linha do tempo</p><h2 id="chartTitle"></h2><p id="chartCaption" class="muted"></p></div>
-          <label class="year-select"><span>Ano</span><select id="year" aria-label="Ano da série"></select></label>
+          <button type="button" id="chartRange" class="range-button" aria-pressed="false">Ver série 2017–2026</button>
         </div>
         <div class="chart-modes" role="group" aria-label="Tipo de gráfico">
           <button type="button" class="chart-switch" data-chart="line" aria-pressed="true">Linha</button>
           <button type="button" class="chart-switch" data-chart="column" aria-pressed="false">Colunas</button>
           <button type="button" class="chart-switch" data-chart="pie" aria-pressed="false">Pizza</button>
-          <label class="year-select" id="chartRangeLabel"><span>Período</span><select id="chartRange" aria-label="Período do gráfico"><option value="year">Ano escolhido</option><option value="all">2017–2026</option></select></label>
         </div>
         <div class="chart-layout"><div id="annualChart" class="annual-chart"></div><aside id="chartSummary" class="chart-summary" aria-label="Resumo do gráfico"></aside></div>
         <div id="chartLegend" class="chart-legend"></div>
@@ -152,5 +167,6 @@
     </section>
     <footer class="footer flex flex-wrap justify-between gap-2"><span>PET-Saúde Clima · GAT 1</span><span>Goiás · Série histórica</span></footer>
   </main>
+  </div>
 </body>
 </html>

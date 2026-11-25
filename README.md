@@ -1,6 +1,8 @@
 # Clima em Goiás
 
-Painel local do PET-Saúde Clima, GAT 1. O recorte de navegação é janeiro de 2017 a dezembro de 2026, com cobertura parcial em 2026. O mapa tem controles de zoom e camadas para municípios, indicador e disponibilidade. Os gráficos oferecem linha, colunas, faixas mensais para classificações e pizza para a distribuição dos meses. A matriz de recorrência mostra o registro e a cobertura por mês e ano. O tema claro ou escuro é salvo no navegador.
+Painel local do PET-Saúde Clima, GAT 1. O recorte vai de janeiro de 2017 a dezembro de 2026, com cobertura parcial em 2026. O menu lateral leva ao mapa, aos gráficos, à recorrência e à planilha completa. O ano selecionado no topo se aplica ao mapa e à linha do tempo. Os botões dos meses permitem navegar no ano, e a reprodução tem pausa, uma barra de progresso e velocidades de 0,5×, 1× e 2×. A reprodução parte do mês selecionado, termina em dezembro e volta a janeiro se iniciada novamente. O tema é salvo no navegador.
+
+O mapa tem enquadramento fixo, com preenchimento por valor e hachura para lacunas no período. A escala numérica usa o máximo disponível para o indicador no conjunto da série. No caso do Monitor de Secas, a leitura é estadual. A lista ao lado do mapa também permite selecionar municípios. Os gráficos oferecem linha, colunas, faixas mensais e pizza. Em **Ver série 2017–2026**, só o gráfico usa o período completo. No modo linha anual, a mediana do mesmo mês em outros anos aparece como referência quando há pelo menos dois valores comparáveis.
 
 **Origem conferida em 25/11/2026.** O XLSX recebido, a exportação atual do Google Sheets e o JSON do painel coincidiram nas nove abas, nos valores tipados das 12.504 células preenchidas e na nota de Posse A2. O endereço com `gid=1626095015` abre a aba de recorrência de Goiânia, com 52 células preenchidas. [Conferência registrada](fontes/verificacao-integral.json) · [Aba de Goiânia](https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=1626095015#gid=1626095015)
 
@@ -62,3 +64,10 @@ O SharePoint fica como possível origem de arquivos para a equipe em uma etapa p
 - [INMET](https://portal.inmet.gov.br/dadoshistoricos), [BDQueimadas/INPE](https://terrabrasilis.dpi.inpe.br/queimadas/bdqueimadas/), [Monitor de Secas/ANA](https://monitordesecas.ana.gov.br/) e [Boletins SEMAD/CIMEHGO](https://goias.gov.br/meioambiente/srh/cimehgo-3/cimehgo-alertas-e-boletins/), conforme fontes indicadas no material recebido.
 - [Malha municipal do IBGE](https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html). Dados de estado e municípios obtidos em 25/11/2026 e registrados em `fontes/manifesto.json`.
 - [Tailwind CLI](https://tailwindcss.com/docs/installation/tailwind-cli) e [configuração do GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), consultados em 25/11/2026.
+
+## Referências para a revisão visual
+
+- [Dengue em Goiás, painel em Power BI](https://github.com/valdivinoaquino/dengue_em_goias) orientou o uso de indicadores no topo, filtros compartilhados e mapa ao lado dos detalhes. Os dados do painel de dengue pertencem ao projeto de referência.
+- [Mapa de incêndios em Goiás](https://github.com/lucassoa13/mapa-incendios-goias) e [Grafos em Python](https://github.com/sidsidoso/grafos-python) foram consultados como exemplos de visualização territorial. O segundo demonstra representação rodoviária e algoritmos de grafos.
+- [ClimaX](https://github.com/microsoft/ClimaX) é um modelo de pesquisa meteorológica e climática. Esta revisão visual trabalha com observações da planilha.
+- [Google Maps JavaScript](https://developers.google.com/maps/documentation/javascript/get-api-key?hl=pt-br) oferece chave de demonstração para protótipos e requer configuração de faturamento para a chave padrão de produção. O mapa atual é renderizado a partir da malha do IBGE já armazenada no projeto.

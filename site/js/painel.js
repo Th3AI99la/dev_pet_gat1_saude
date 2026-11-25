@@ -1,6 +1,9 @@
 import { byId as $, escapeHtml as escape, mountTheme } from './ui.js';
 import { isNumber, number as NUM, legend, lineChart, pieChart } from './graficos.js';
 import { mountWorkbook } from './planilha.js';
+import { mountMap } from './mapa.js';
+import { mountMenu } from './navegacao.js';
+import { mountPlayback } from './reproducao.js';
 
 const MONTHS = 'Janeiro Fevereiro Março Abril Maio Junho Julho Agosto Setembro Outubro Novembro Dezembro'.split(' ');
 const SHORT = MONTHS.map(month => month.slice(0, 3));
@@ -16,12 +19,6 @@ const CATEGORIES = {
   stable: ['Estabilidade', '#abc5d8'], other: ['Outro registro', '#d3c4a1'],
   described: ['Descrição disponível', '#aad0b5'], limited: ['Dados limitados', '#ecd7a9'],
 };
-const LABELS = {
-  goiania: { dx: -15, dy: -12, anchor: 'end' }, luziania: { dx: 15, dy: -7 },
-  posse: { dx: 15, dy: 0 }, 'sao-miguel': { dx: -14, dy: -14, anchor: 'end', name: 'São Miguel do Araguaia' },
-  catalao: { dx: 15, dy: 4 }, mineiros: { dx: -14, dy: 0, anchor: 'end' }, 'rio-verde': { dx: -5, dy: 26, anchor: 'middle' },
-};
-
 const monthDate = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
 const numberMonth = period => Number(period.slice(5));
 const yearOf = period => Number(period.slice(0, 4));
@@ -35,13 +32,13 @@ let data;
 let map;
 let periods;
 let years;
-const state = { metric: 'rain', city: 'posse', period: '2025-04', chart: 'line', range: 'year', layer: 'points', mesh: true };
-const mapView = { zoom: 1, x: 300, y: 237.5 };
-let timer;
+const state = { metric: 'rain', city: 'posse', period: '2025-04', chart: 'line', range: 'year' };
+let player;
+let drawMap;
 let openWorkbookRow;
 let chartKey = '';
 let heatKey = '';
-let mapKey = '';
+const mapScales = new Map();
 
 function reading(period = state.period, city = state.city) {
   const month = data.municipalities[city]?.months[period];
@@ -83,68 +80,36 @@ function kindColor(entry, maximum = 1) {
   return `color-mix(in srgb, var(--tone) ${intensity.toFixed(2)}%, #f4f7ef)`;
 }
 
-function showMap() {
+function mapMaximum() {
+  if (!mapScales.has(state.metric)) {
+    let maximum = 0;
+    for (const city of Object.keys(data.municipalities)) {
+      for (const period of periods) {
+        const { value } = reading(period, city);
+        if (isNumber(value)) maximum = Math.max(maximum, value);
+      }
+    }
+    mapScales.set(state.metric, maximum);
+  }
+  return mapScales.get(state.metric);
+}
+
+function showOverview() {
   const statewide = state.metric === 'drought';
-  const key = [statewide ? 'goias' : state.city, state.mesh, state.layer, state.metric, state.period].join(':');
-  if (key === mapKey) return;
-  const previouslyFocused = document.activeElement?.dataset?.mapCity;
-  mapKey = key;
-  $('map-title').textContent = statewide ? 'Monitoramento em Goiás' : 'Municípios da planilha';
-  $('mapScope').textContent = statewide ? 'Leitura estadual' : '7 municípios · 5 regiões';
-  const coverageLayer = state.layer === 'coverage';
-  const metricLayer = state.layer === 'metric';
-  $('mapLayer').disabled = statewide;
-  $('mapLegend').innerHTML = statewide ? 'Contorno estadual · sem classes municipais' : coverageLayer
-    ? Object.values(COVERAGE).map(([label, color]) => legend(label, color)).join('')
-    : metricLayer && !categorical(state.metric)
-      ? 'Marcadores maiores indicam valores maiores no mês · anel vazio: sem valor'
-      : metricLayer
-        ? legend('Descrição disponível', CATEGORIES.described[1]) + legend('Dados limitados', CATEGORIES.limited[1]) + legend('Sem descrição', COVERAGE.missing[1])
-        : '<i class="selected-dot"></i> Município selecionado';
-  const mapNode = $('map');
-  mapNode.classList.toggle('map-state-only', statewide);
-  const monthMax = Math.max(0, ...Object.keys(map.municipalities).map(city => reading(state.period, city).value).filter(isNumber));
-  const markers = Object.entries(map.municipalities).map(([city, item]) => {
-    const [x, y] = item.position;
-    const label = LABELS[city];
-    const name = label.name ?? data.municipalities[city].name;
-    const lx = x + label.dx;
-    const ly = y + label.dy;
-    const entry = reading(state.period, city);
-    const numeric = isNumber(entry.value);
-    const mark = coverageLayer ? COVERAGE[coverage(entry)][1] : metricLayer ? (numeric ? METRICS[state.metric].tone : CATEGORIES[entry.category]?.[1] ?? 'transparent') : '';
-    const radius = metricLayer && numeric ? 5 + Math.sqrt(monthMax ? entry.value / monthMax : 0) * 9 : 6;
-    const tooltip = `${name} · ${data.municipalities[city].region} · ${labelDate(state.period)} · ${display(entry.value)}`;
-    return `<g class="marker" role="button" tabindex="0" data-map-city="${city}" aria-label="Selecionar ${escape(name)}" aria-pressed="${city === state.city}">
-      <title>${escape(tooltip)}</title>
-      <line x1="${x}" y1="${y}" x2="${lx}" y2="${ly - 3}"></line>
-      <circle class="hit" cx="${x}" cy="${y}" r="${Math.max(15, radius + 3)}"></circle><circle class="pin-ring" cx="${x}" cy="${y}" r="${radius + 4}"></circle>
-      <circle class="pin" cx="${x}" cy="${y}" r="${radius}"${mark ? ` style="fill:${mark}"` : ''}></circle>
-      <text x="${lx}" y="${ly}" text-anchor="${label.anchor ?? 'start'}" dominant-baseline="middle">${escape(name)}</text>
-    </g>`;
-  });
-  mapNode.innerHTML = `<title id="mapSvgTitle">${statewide ? 'Mapa estadual de Goiás' : 'Mapa dos municípios selecionados em Goiás'}</title>
-    <path class="map-base" d="${escape(map.state)}" fill-rule="evenodd"></path>
-    ${state.mesh ? `<path class="map-mesh" d="${escape(map.mesh)}"></path>` : ''}
-    ${statewide ? '' : `<path class="map-area" d="${escape(map.municipalities[state.city].path)}" fill-rule="evenodd"></path>${markers.join('')}`}
-    <g transform="translate(533 44)" fill="#c4d7be" aria-hidden="true"><path d="M0 9 5 -2 10 9 5 6Z"></path><text x="5" y="-9" text-anchor="middle" fill="#e1ead8" font-size="12">N</text></g>`;
-  if (previouslyFocused && !statewide) mapNode.querySelector(`[data-map-city="${previouslyFocused}"]`)?.focus({ preventScroll: true });
-}
-
-function positionMap() {
-  const { zoom } = mapView;
-  const width = map.width / zoom, height = map.height / zoom;
-  mapView.x = Math.min(map.width - width / 2, Math.max(width / 2, mapView.x));
-  mapView.y = Math.min(map.height - height / 2, Math.max(height / 2, mapView.y));
-  $('map').setAttribute('viewBox', `${mapView.x - width / 2} ${mapView.y - height / 2} ${width} ${height}`);
-  $('map').classList.toggle('zoomable', zoom > 1);
-  $('zoomOut').disabled = zoom === 1;
-  $('zoomIn').disabled = zoom >= 3;
-}
-
-function zoomMap(multiplier) {
-  mapView.zoom = Math.max(1, Math.min(3, mapView.zoom * multiplier));
-  positionMap();
+  const info = METRICS[state.metric];
+  const selected = reading();
+  const entries = Object.keys(data.municipalities).map(id => ({ id, ...reading(state.period, id) }));
+  const year = yearOf(state.period);
+  const valid = MONTHS.reduce((total, _, index) => total + Number(reading(monthDate(year, index + 1)).value !== null), 0);
+  $('statMetric').textContent = info.title;
+  $('statValue').textContent = selected.value === null ? 'Sem valor' : isNumber(selected.value) ? display(selected.value) : statewide ? display(selected.value) : 'Com registro';
+  $('statPlace').textContent = `${statewide ? 'Goiás' : data.municipalities[state.city].name} · ${labelDate(state.period)}`;
+  $('statMapLabel').textContent = statewide ? 'Escala da leitura' : 'Cobertura no mapa';
+  $('statMapValue').textContent = statewide ? 'Estadual' : `${entries.filter(entry => entry.value !== null).length}/${entries.length}`;
+  $('statMapDetail').textContent = statewide ? 'Monitor de Secas' : 'Municípios com registro';
+  $('statYearLabel').textContent = `Cobertura em ${year}`;
+  $('statYearValue').textContent = `${valid}/12`;
+  drawMap({ scope: statewide ? 'state' : 'municipal', city: state.city, entries, maximum: mapMaximum(), display, tone: info.tone, categories: CATEGORIES, numeric: !categorical(state.metric) });
 }
 
 function showReading() {
@@ -154,7 +119,6 @@ function showReading() {
   $('placeRegion').textContent = statewide ? 'Escala estadual' : `Região ${municipality.region}`;
   $('placeName').textContent = statewide ? 'Goiás' : municipality.name;
   $('placeStation').textContent = statewide ? 'Monitor de Secas · ANA / CIMEHGO' : metric === 'fire' ? 'BDQueimadas · valores da planilha' : `INMET · referência ${municipality.station}`;
-  $('period').textContent = labelDate(period);
   const { value, record } = reading();
   const unit = METRICS[metric].unit;
   const wideLabel = !isNumber(value);
@@ -186,6 +150,13 @@ function chartMode() {
 
 function chartPeriods(year) {
   return state.range === 'all' ? periods : SHORT.map((_, i) => monthDate(year, i + 1));
+}
+
+function historicalMedian(month, excludedYear) {
+  const values = years.filter(year => year !== excludedYear).map(year => reading(monthDate(year, month)).value).filter(isNumber).sort((a, b) => a - b);
+  if (values.length < 2) return null;
+  const center = Math.floor(values.length / 2);
+  return values.length % 2 ? values[center] : (values[center] + values[center - 1]) / 2;
 }
 
 function renderAnnual(year) {
@@ -227,8 +198,9 @@ function renderAnnual(year) {
   const maximum = state.metric === 'humidity' ? 100 : niceMax(seriesMaximum(periods));
   const unit = METRICS[state.metric].unit;
   if (mode === 'line') {
-    annual.innerHTML = lineChart(samples, maximum, wholePeriod, tick, display);
-    $('chartLegend').textContent = `${unit ? `Unidade: ${unit} · ` : ''}A linha é interrompida nos meses sem valor.`;
+    const benchmark = wholePeriod ? [] : MONTHS.map((_, index) => historicalMedian(index + 1, year));
+    annual.innerHTML = lineChart(samples, maximum, wholePeriod, tick, display, benchmark);
+    $('chartLegend').innerHTML = `${unit ? `<span>Unidade: ${escape(unit)}</span>` : ''}<span class="line-key"><i></i> Série selecionada</span>${benchmark.some(isNumber) ? '<span class="line-key reference"><i></i> Mediana do mês nos outros anos com valor, mínimo de 2 registros</span>' : ''}<span>Intervalos na linha indicam meses sem valor.</span>`;
     return;
   }
   const scale = Array.from({ length: 5 }, (_, i) => `<span style="top:${i * 25}%">${NUM.format(maximum * (1 - i / 4))}</span>`).join('');
@@ -295,13 +267,15 @@ function showSeason() {
 }
 
 function showSelection() {
-  const index = periods.indexOf(state.period);
-  $('timeline').value = index;
-  $('timeline').setAttribute('aria-valuetext', labelDate(state.period));
-  $('previous').disabled = index === 0;
-  $('next').disabled = index === periods.length - 1;
-  $('year').value = yearOf(state.period);
-  $('year').disabled = state.range === 'all';
+  const year = yearOf(state.period);
+  $('year').value = year;
+  const chartRange = $('chartRange');
+  chartRange.setAttribute('aria-pressed', String(state.range === 'all'));
+  chartRange.textContent = state.range === 'all' ? `Voltar para ${year}` : 'Ver série 2017–2026';
+  player.render(year, numberMonth(state.period), MONTHS.map((_, index) => {
+    const { value } = reading(monthDate(year, index + 1));
+    return { label: isNumber(value) || value === null ? display(value) : 'Com registro', available: value !== null };
+  }));
   $('city').value = state.city;
   $('city').disabled = state.metric === 'drought';
   for (const button of $('metrics').querySelectorAll('[data-metric]')) button.setAttribute('aria-pressed', button.dataset.metric === state.metric);
@@ -318,7 +292,7 @@ function showSelection() {
 
 function render() {
   $('painel').style.setProperty('--tone', METRICS[state.metric].tone);
-  showMap();
+  showOverview();
   showReading();
   renderAnnual(yearOf(state.period));
   showChartSummary();
@@ -332,21 +306,14 @@ function setPeriod(period) {
   if (!periods.includes(period)) return;
   state.period = period;
   render();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    $('valueCard').getAnimations().forEach(animation => animation.cancel());
+    $('valueCard').animate([{ opacity: .7, transform: 'translateY(2px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 240, easing: 'ease-out' });
+  }
 }
 
 function stop() {
-  clearInterval(timer);
-  timer = undefined;
-  $('playLabel').textContent = 'Reproduzir';
-  $('playIcon').textContent = '▶';
-}
-
-function step(amount, autoplay = false) {
-  if (!autoplay) stop();
-  const newIndex = periods.indexOf(state.period) + amount;
-  if (newIndex < 0 || newIndex >= periods.length) { stop(); return; }
-  setPeriod(periods[newIndex]);
-  if (autoplay && newIndex === periods.length - 1) stop();
+  player.stop();
 }
 
 function csvCell(value) {
@@ -382,58 +349,11 @@ function selectCity(city) {
   render();
 }
 
-function mountMap() {
-  const element = $('map');
-  let pan;
-  let ignoreClick = false;
-  $('zoomIn').addEventListener('click', () => zoomMap(1.32));
-  $('zoomOut').addEventListener('click', () => zoomMap(1 / 1.32));
-  $('zoomReset').addEventListener('click', () => {
-    Object.assign(mapView, { zoom: 1, x: map.width / 2, y: map.height / 2 });
-    positionMap();
-  });
-  $('mapLayer').addEventListener('change', event => { state.layer = event.target.value; showMap(); });
-  $('mapMesh').addEventListener('change', event => { state.mesh = event.target.checked; showMap(); });
-  element.addEventListener('click', event => {
-    if (!ignoreClick) selectCity(event.target.closest('[data-map-city]')?.dataset.mapCity);
-    ignoreClick = false;
-  });
-  element.addEventListener('keydown', event => {
-    const city = event.target.dataset.mapCity;
-    if (city && ['Enter', ' '].includes(event.key)) { event.preventDefault(); selectCity(city); }
-  });
-  element.addEventListener('pointerdown', event => {
-    ignoreClick = false;
-    if (mapView.zoom <= 1 || event.button !== 0) return;
-    const scale = element.getScreenCTM()?.a;
-    if (!scale) return;
-    pan = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY, x: mapView.x, y: mapView.y, scale };
-  });
-  element.addEventListener('pointermove', event => {
-    if (pan?.id !== event.pointerId) return;
-    const dx = event.clientX - pan.clientX, dy = event.clientY - pan.clientY;
-    if (!ignoreClick && Math.hypot(dx, dy) < 5) return;
-    if (!ignoreClick) element.setPointerCapture(event.pointerId);
-    ignoreClick = true;
-    mapView.x = pan.x - dx / pan.scale;
-    mapView.y = pan.y - dy / pan.scale;
-    element.classList.add('panning');
-    positionMap();
-  });
-  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave']) {
-    element.addEventListener(name, () => {
-      if (name === 'pointerleave' && pan && element.hasPointerCapture(pan.id)) return;
-      pan = null;
-      element.classList.remove('panning');
-    });
-  }
-  positionMap();
-}
-
 function mount() {
   years = Array.from({ length: data.end - data.start + 1 }, (_, index) => data.start + index);
   periods = years.flatMap(year => SHORT.map((_, index) => monthDate(year, index + 1)));
-  $('timeline').max = periods.length - 1;
+  drawMap = mountMap(map, data.municipalities, selectCity);
+  player = mountPlayback(MONTHS, month => setPeriod(monthDate(yearOf(state.period), month)));
   $('metrics').innerHTML = Object.entries(METRICS).map(([id, info]) => `<button type="button" class="metric" data-metric="${id}" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="${info.icon}"></path></svg>${info.option}</button>`).join('');
   $('metrics').addEventListener('click', event => {
     const button = event.target.closest('[data-metric]');
@@ -452,18 +372,7 @@ function mount() {
   $('city').addEventListener('change', event => selectCity(event.target.value));
   $('year').innerHTML = years.map(year => `<option value="${year}">${year}${year === data.end ? ' (parcial)' : ''}</option>`).join('');
   $('year').addEventListener('change', event => { stop(); setPeriod(monthDate(event.target.value, numberMonth(state.period))); });
-  $('timeline').addEventListener('input', event => { stop(); setPeriod(periods[Number(event.target.value)]); });
-  $('previous').addEventListener('click', () => step(-1));
-  $('next').addEventListener('click', () => step(1));
-  $('play').addEventListener('click', () => {
-    if (timer) { stop(); return; }
-    if (state.period === periods.at(-1)) setPeriod(periods[0]);
-    $('playLabel').textContent = 'Pausar';
-    $('playIcon').textContent = 'Ⅱ';
-    timer = setInterval(() => step(1, true), 850);
-  });
-  mountMap();
-  $('chartRange').addEventListener('change', event => { stop(); state.range = event.target.value; render(); });
+  $('chartRange').addEventListener('click', () => { stop(); state.range = state.range === 'year' ? 'all' : 'year'; render(); });
   for (const button of document.querySelectorAll('[data-chart]')) {
     button.addEventListener('click', () => { stop(); state.chart = button.dataset.chart; render(); });
   }
@@ -487,6 +396,7 @@ function mount() {
   render();
   $('painel').hidden = false;
   $('loading').hidden = true;
+  mountMenu();
 }
 
 async function json(path) {
