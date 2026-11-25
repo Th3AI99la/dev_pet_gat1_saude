@@ -8,6 +8,7 @@
   <link rel="icon" href="assets/logo-pet-saude-clima.jpg" type="image/jpeg">
   <link rel="preload" href="assets/poppins-regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/painel.css">
+  <link rel="stylesheet" href="css/mapa.css">
   <script type="module" src="js/painel.js"></script>
 </head>
 <body>
@@ -63,13 +64,18 @@
           <div class="map-wrap" id="mapStage">
             <div class="map-topline">
               <div class="map-stamp" aria-hidden="true"><span id="mapMetric"></span><strong id="mapDate"></strong></div>
-              <button type="button" id="mapResetView" class="map-reset-view" aria-pressed="true" aria-controls="map">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
-                Estado inteiro
-              </button>
+              <div class="map-tools" role="group" aria-label="Controles do mapa">
+                <div class="map-zoom">
+                  <button type="button" id="mapZoomOut" class="map-tool" aria-controls="map" aria-label="Reduzir o mapa" title="Reduzir (−)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                  <button type="button" id="mapZoomIn" class="map-tool" aria-controls="map" aria-label="Ampliar o mapa" title="Ampliar (+)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+                </div>
+                <button type="button" id="mapResetView" class="map-tool map-reset-view" aria-pressed="true" aria-controls="map" title="Mostrar Goiás inteiro (0)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
+                  Estado inteiro
+                </button>
+              </div>
             </div>
             <svg id="map" viewBox="0 0 600 475" aria-labelledby="mapSvgTitle"><title id="mapSvgTitle">Mapa dos municípios selecionados em Goiás</title></svg>
-            <div id="mapWeather" class="map-weather" aria-hidden="true"></div>
             <div id="mapPreview" class="map-preview" aria-hidden="true"></div>
             <p class="sr-only" id="mapViewStatus" role="status"></p>
           </div>
@@ -78,33 +84,18 @@
             <div class="map-footer">
               <span id="mapScope"></span>
               <span id="mapLegend"></span>
-              <button type="button" id="toggleWeather" class="weather-toggle" aria-pressed="true">Efeitos ilustrativos</button>
               <span class="map-credit">Malha do IBGE</span>
             </div>
           </div>
           <section id="timeline" class="playback" aria-labelledby="timelineTitle">
             <div class="playback-head">
               <div><h3 id="timelineTitle">Linha do tempo</h3><p id="period"></p></div>
-              <div class="year-tools">
-                <button type="button" id="previousYear" class="step-control" aria-label="Ano anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
-                <label class="year-select"><span class="sr-only">Ano do painel</span><select id="year"></select></label>
-                <button type="button" id="nextYear" class="step-control" aria-label="Próximo ano"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+              <div class="timeline-actions">
+                <label class="year-select"><span>Ano</span><select id="year" data-panel-year></select></label>
+                <button type="button" id="play" class="play-action"><svg viewBox="0 0 24 24" id="playIcon" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg><span id="playLabel">Reproduzir</span></button>
               </div>
             </div>
             <div id="monthRail" class="month-rail" role="group" aria-label="Selecione um mês do ano"></div>
-            <div class="player-bar">
-              <div class="playback-controls">
-                <button type="button" id="play" class="play-action"><svg viewBox="0 0 24 24" id="playIcon" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg><span id="playLabel">Reproduzir</span></button>
-                <button type="button" id="restartPlay" class="step-control" aria-label="Voltar ao início da reprodução" title="Voltar ao início"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V3m0 5h5M4.5 8a8 8 0 1 1-.2 8"/></svg></button>
-              </div>
-              <label class="player-field"><span>Intervalo</span><select id="playRange"><option value="year">Ano selecionado</option><option value="all">2017–2026</option></select></label>
-              <label class="player-field"><span>Velocidade</span><select id="playSpeed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
-            </div>
-            <div class="time-scrub">
-              <input type="range" id="playSeek" aria-label="Ir para um mês da reprodução">
-              <div class="time-scale" aria-hidden="true"><span id="playStart"></span><span id="playPosition"></span><span id="playEnd"></span></div>
-            </div>
-            <p class="sr-only" id="playStatus" role="status"></p>
           </section>
         </article>
 
@@ -143,7 +134,14 @@
           </article>
           <article class="state-watch" aria-labelledby="stateWatchTitle">
             <h3 id="stateWatchTitle">Sinais e avisos</h3>
-            <p class="muted">Registro estadual do mês selecionado no mapa.</p>
+            <div class="watch-calendar">
+              <div class="date-navigation" role="group" aria-label="Ano dos boletins de seca">
+                <button type="button" class="date-arrow" id="watchPreviousYear" aria-label="Ano anterior dos boletins">‹</button>
+                <strong id="watchYear"></strong>
+                <button type="button" class="date-arrow" id="watchNextYear" aria-label="Próximo ano dos boletins">›</button>
+              </div>
+              <div id="watchMonths" class="watch-months" role="group" aria-label="Mês do boletim"></div>
+            </div>
             <div class="state-observation" id="stateObservation"></div>
             <a href="#territorio" id="showStateDrought" class="map-state-link">Ver seca no mapa <span aria-hidden="true">↑</span></a>
             <div class="official-notices">
@@ -159,7 +157,10 @@
       <article class="panel chart-panel" id="series" aria-labelledby="chartTitle">
         <div class="card-head flex flex-wrap items-start justify-between gap-3">
           <div><p class="eyebrow">Linha do tempo</p><h2 id="chartTitle"></h2><p id="chartCaption" class="muted"></p></div>
-          <button type="button" id="chartRange" class="range-button" aria-pressed="false">Ver série 2017–2026</button>
+          <div class="timeline-actions">
+            <label class="year-select"><span>Ano</span><select id="chartYear" data-panel-year></select></label>
+            <button type="button" id="chartRange" class="range-button" aria-pressed="false">Ver série 2017–2026</button>
+          </div>
         </div>
         <div class="chart-modes" role="group" aria-label="Tipo de gráfico">
           <button type="button" class="chart-switch" data-chart="line" aria-pressed="true">Linha</button>
@@ -171,13 +172,18 @@
       </article>
 
       <article class="panel recurrence-panel" id="recorrencia" aria-labelledby="recurrenceTitle">
-        <div class="card-head">
-          <p class="eyebrow">Comparação entre anos</p><h2 id="recurrenceTitle">Recorrência mês a mês</h2>
-          <p class="muted">Compare o mesmo mês entre anos. Cada célula abre o registro e a última coluna mostra a cobertura do ano.</p>
+        <div class="card-head flex flex-wrap items-start justify-between gap-3">
+          <div><h2 id="recurrenceTitle">Recorrência mês a mês</h2>
+          <p class="muted" id="recurrencePlace"></p></div>
+          <label class="year-select"><span>Mês</span><select id="recurrenceMonth"></select></label>
         </div>
-        <div id="heatmap" class="heatmap" role="region" aria-label="Grade de comparação por mês e ano" tabindex="0"></div>
-        <div id="heatLegend" class="chart-legend"></div>
-        <div id="seasonPattern" class="season-pattern"></div>
+        <div class="recurrence-layout">
+          <div class="recurrence-plot">
+            <h3 id="recurrenceMonthTitle"></h3>
+            <ul id="recurrenceRows" aria-labelledby="recurrenceMonthTitle"></ul>
+          </div>
+          <div id="recurrenceDetail" class="recurrence-detail" aria-live="polite"></div>
+        </div>
       </article>
 
       <div class="extract flex flex-wrap items-center justify-between gap-3">

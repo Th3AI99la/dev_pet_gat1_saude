@@ -68,10 +68,17 @@ html .territory-grid #mapStage {
 .climate-normals span, .climate-year span { color: var(--muted); font-size: .69rem; }
 .climate-normals strong { font-size: clamp(.78rem,1.9vw,1.16rem); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .climate-normals small { font-size: .69em; font-weight: 500; }
-.climate-year { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 3px 8px; }
+.climate-year { min-height: 38px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 .climate-year > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; }
-.climate-year .climate-year-controls { gap: 3px; flex-wrap: nowrap; }
-.climate-year-controls .step-control { min-width: 29px; min-height: 27px; line-height: 1; font-size: 1.1rem; }
+.date-navigation, .climate-year .date-navigation { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: nowrap; }
+.date-navigation strong { font-size: .85rem; font-variant-numeric: tabular-nums; }
+.date-arrow { width: 31px; min-height: 31px; line-height: 1; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); color: var(--accent); font-size: 1.25rem; }
+.date-arrow:hover:enabled, .watch-months button:hover:enabled { background: var(--surface-hover); }
+.watch-calendar { margin-top: 8px; }
+.watch-months { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 4px; margin-top: 6px; }
+.watch-months button { min-height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); font-size: .69rem; }
+.watch-months button[aria-pressed="true"] { background: var(--accent-fill); color: var(--accent-copy); }
+.watch-months button:disabled { background: var(--gap-fill); color: var(--gap-ink); opacity: 1; }
 .climate-year #stateYear { color: var(--accent); font-weight: 600; }
 .climate-year strong { font-size: .91rem; font-variant-numeric: tabular-nums; }
 .climate-anomaly { --plot-height: 132px; display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 4px; }

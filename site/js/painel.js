@@ -4,7 +4,6 @@ import { mountWorkbook } from './planilha.js';
 import { mountMap } from './mapa.js';
 import { mountMenu } from './navegacao.js';
 import { mountPlayback } from './reproducao.js';
-import { mountMapEffects } from './efeitos-mapa.js';
 import { mountStateClimate } from './goias.js';
 
 const MONTHS = 'Janeiro Fevereiro Março Abril Maio Junho Julho Agosto Setembro Outubro Novembro Dezembro'.split(' ');
@@ -34,15 +33,21 @@ let data;
 let map;
 let periods;
 let years;
-const state = { metric: 'rain', city: 'posse', mapFocus: null, period: '2025-04', chart: 'line', range: 'year' };
+const INITIAL_PERIOD = '2025-04';
+const state = {
+  metric: 'rain', city: 'posse', mapFocus: null, chart: 'line', range: 'year',
+  period: INITIAL_PERIOD, chartPeriod: INITIAL_PERIOD, recurrencePeriod: INITIAL_PERIOD,
+};
 let player;
 let drawMap;
-let setMapWeather;
-let showStateObservation;
 let openWorkbookRow;
 let chartKey = '';
-let heatKey = '';
+let recurrencePlotKey = '';
+let summaryKey = '';
+let recurrenceDetailKey = '';
 const mapScales = new Map();
+const wholeState = () => state.mapFocus === null;
+const analysisPlace = () => state.metric === 'drought' ? 'Goiás' : data.municipalities[state.city].name;
 
 function reading(period = state.period, city = state.city) {
   const month = data.municipalities[city]?.months[period];
@@ -63,6 +68,25 @@ function display(value) {
   if (value === null) return 'Sem valor disponível';
   const unit = METRICS[state.metric].unit;
   return isNumber(value) ? `${NUM.format(value)}${unit ? ' ' + unit : ''}` : value;
+}
+
+function missingLabel(entry) {
+  const reason = statusText(entry.record);
+  return reason ? `Sem valor disponível. ${reason}` : 'Sem valor disponível para este indicador e período.';
+}
+
+function mapEntries(period) {
+  return Object.keys(data.municipalities).map(id => ({ id, ...reading(period, id) }));
+}
+
+function mapMonth(period) {
+  if (wholeState() && state.metric !== 'drought') {
+    const entries = mapEntries(period);
+    const count = entries.filter(entry => entry.value !== null).length;
+    return { period, label: count ? `${count}/${entries.length} locais` : 'Sem dados', available: count > 0 };
+  }
+  const entry = reading(period);
+  return { period, label: entry.value === null ? missingLabel(entry) : isNumber(entry.value) ? display(entry.value) : 'Registro', available: entry.value !== null };
 }
 
 function seriesMaximum(periodList) {
@@ -102,15 +126,17 @@ function showOverview() {
   const statewide = state.metric === 'drought';
   const info = METRICS[state.metric];
   const selected = reading();
-  const entries = Object.keys(data.municipalities).map(id => ({ id, ...reading(state.period, id) }));
+  const entries = mapEntries(state.period);
+  const present = entries.filter(entry => entry.value !== null).length;
+  const stateOverview = wholeState() && !statewide;
   const year = yearOf(state.period);
-  const valid = MONTHS.reduce((total, _, index) => total + Number(reading(monthDate(year, index + 1)).value !== null), 0);
+  const valid = MONTHS.reduce((total, _, index) => total + Number(mapMonth(monthDate(year, index + 1)).available), 0);
   $('statMetric').textContent = info.title;
-  $('statValue').textContent = selected.value === null ? 'Sem valor' : isNumber(selected.value) ? display(selected.value) : statewide ? display(selected.value) : 'Com registro';
-  $('statPlace').textContent = `${statewide ? 'Goiás' : data.municipalities[state.city].name} · ${labelDate(state.period)}`;
-  $('statMapLabel').textContent = statewide ? 'Escala da leitura' : 'Cobertura no mapa';
-  $('statMapValue').textContent = statewide ? 'Estadual' : `${entries.filter(entry => entry.value !== null).length}/${entries.length}`;
-  $('statMapDetail').textContent = statewide ? 'Monitor de Secas' : 'Municípios com registro';
+  $('statValue').textContent = stateOverview ? (present ? `${present}/${entries.length}` : 'Sem dados') : selected.value === null ? 'Sem valor' : isNumber(selected.value) ? display(selected.value) : statewide ? display(selected.value) : 'Com registro';
+  $('statPlace').textContent = `${wholeState() ? 'Goiás' : analysisPlace()} · ${labelDate(state.period)}`;
+  $('statMapLabel').textContent = statewide || stateOverview ? 'Escala da leitura' : 'Cobertura no mapa';
+  $('statMapValue').textContent = statewide ? 'Estadual' : stateOverview ? 'Municipal' : `${present}/${entries.length}`;
+  $('statMapDetail').textContent = statewide ? 'Monitor de Secas' : stateOverview ? 'Municípios da planilha' : 'Municípios com registro';
   $('statYearLabel').textContent = `Cobertura em ${year}`;
   $('statYearValue').textContent = `${valid}/12`;
   drawMap({ scope: statewide ? 'state' : 'municipal', city: state.city, mapFocus: state.mapFocus, entries, selected, maximum: mapMaximum(), display, tone: info.tone, categories: CATEGORIES, numeric: !categorical(state.metric), date: labelDate(state.period), metric: info.option });
@@ -119,6 +145,16 @@ function showOverview() {
 function showReading() {
   const { metric, period, city } = state;
   const statewide = metric === 'drought';
+  if (wholeState() && !statewide) {
+    const entries = mapEntries(period);
+    const count = entries.filter(entry => entry.value !== null).length;
+    $('placeRegion').textContent = 'Visão geral';
+    $('placeName').textContent = 'Estado de Goiás';
+    $('placeStation').textContent = labelDate(period);
+    $('valueCard').innerHTML = `<p class="eyebrow">${escape(METRICS[metric].title)}</p><p class="reading">${count}/${entries.length}</p><p class="context">Municípios da planilha com dados neste mês</p>`;
+    $('monthDetail').textContent = count ? 'Selecione um município para consultar seu registro.' : 'Nenhum dos municípios da planilha tem valor neste mês.';
+    return;
+  }
   const municipality = data.municipalities[city];
   $('placeRegion').textContent = statewide ? 'Escala estadual' : `Região ${municipality.region}`;
   $('placeName').textContent = statewide ? 'Goiás' : municipality.name;
@@ -180,7 +216,7 @@ function renderAnnual(year) {
   const valid = samples.filter(sample => sample.value !== null).length;
   const rangeTitle = wholePeriod ? `${data.start}–${data.end}` : year;
   $('chartTitle').textContent = `${METRICS[state.metric].title} · ${rangeTitle}`;
-  $('chartCaption').textContent = `${valid} de ${samples.length} meses com ${noUnits ? 'descrição' : 'valor numérico'}${wholePeriod || year === data.end ? ' · 2026 parcial' : ''}`;
+  $('chartCaption').textContent = `${analysisPlace()} · ${valid} de ${samples.length} meses com ${noUnits ? 'descrição' : 'valor numérico'}${wholePeriod || year === data.end ? ' · 2026 parcial' : ''}`;
   if (mode === 'pie') {
     const slice = entry => state.metric === 'drought'
       ? entry.category ?? 'missing' : state.metric === 'events' ? entry.category ?? (entry.record ? 'limited' : 'missing') : coverage(entry);
@@ -197,11 +233,15 @@ function renderAnnual(year) {
     return;
   }
   const tick = (period, compact) => compact ? numberMonth(period) === 1 ? String(yearOf(period)) : '' : SHORT[numberMonth(period) - 1];
-  const slot = (entry, content, classes, css = '') => `<button type="button" class="${classes}" data-period="${entry.period}" aria-pressed="false" aria-label="${escape(entry.date + ': ' + display(entry.value))}" title="${escape(entry.date + ' · ' + display(entry.value))}"${css ? ` style="${css}"` : ''}>${content}<span>${tick(entry.period, wholePeriod)}</span></button>`;
+  const slot = (entry, content, classes, css = '') => {
+    const available = entry.value !== null;
+    const label = escape(`${entry.date} · ${available ? display(entry.value) : missingLabel(entry)}`);
+    return `<button type="button" class="${classes}${available ? '' : ' unavailable'}" ${available ? `data-period="${entry.period}" aria-pressed="false"` : 'disabled'} aria-label="${label}" title="${label}"${css ? ` style="${css}"` : ''}>${content}<span>${tick(entry.period, wholePeriod)}</span></button>`;
+  };
   const wrap = markup => wholePeriod ? `<div class="plot-scroll" tabindex="0" aria-label="Área de rolagem do gráfico"><div class="long-series">${markup}</div></div>` : markup;
   if (noUnits) {
     annual.innerHTML = wrap(`<div class="event-strip" style="--slots:${samples.length}" aria-label="Registros mensais de ${rangeTitle}">${samples.map(entry => slot(entry, '<i></i>', 'event-slot', `--cell-color:${kindColor(entry)}`)).join('')}</div>`);
-    $('chartLegend').innerHTML = (state.metric === 'drought' ? ['advance', 'retreat', 'mixed', 'stable', 'other'] : ['described', 'limited']).map(key => legend(CATEGORIES[key][0], CATEGORIES[key][1])).join('') + legend('Sem descrição', COVERAGE.missing[1]);
+    $('chartLegend').innerHTML = (state.metric === 'drought' ? ['advance', 'retreat', 'mixed', 'stable', 'other'] : ['described', 'limited']).map(key => legend(CATEGORIES[key][0], CATEGORIES[key][1])).join('') + legend('Cinza · sem dados', 'var(--gap-fill)');
     return;
   }
   const maximum = state.metric === 'humidity' ? 100 : niceMax(seriesMaximum(periods));
@@ -223,95 +263,90 @@ function renderAnnual(year) {
 }
 
 function showChartSummary() {
-  const selected = reading();
-  const flat = chartPeriods(yearOf(state.period)).map(period => [period, reading(period).value]);
+  const key = [state.chartPeriod, state.city, state.metric, state.range].join('/');
+  if (key === summaryKey) return;
+  summaryKey = key;
+  const selected = reading(state.chartPeriod);
+  const flat = chartPeriods(yearOf(state.chartPeriod)).map(period => [period, reading(period).value]);
   const valid = flat.filter(([, value]) => isNumber(value));
   const best = valid.reduce((peak, item) => peak === null || item[1] > peak[1] ? item : peak, null);
   const caption = categorical(state.metric) ? 'Registro selecionado' : 'Mês selecionado';
-  $('chartSummary').innerHTML = `<p class="eyebrow">${caption}</p><strong>${escape(display(selected.value))}</strong><p>${escape(labelDate(state.period))}</p>${best ? `<hr><p class="eyebrow">Maior valor no recorte</p><strong>${escape(display(best[1]))}</strong><p>${escape(labelDate(best[0]))}</p>` : ''}`;
+  const rows = selected.record?.row ? [selected.record.row] : selected.record?.rows ?? [];
+  $('chartSummary').innerHTML = `<p class="eyebrow">${caption}</p><strong>${escape(display(selected.value))}</strong><p>${escape(labelDate(state.chartPeriod))}</p>${selected.value === null ? '' : rows.map(row => `<button type="button" class="source-jump" data-source-row="${row}">Abrir linha ${row}</button>`).join('')}${best ? `<hr><p class="eyebrow">Maior valor no recorte</p><strong>${escape(display(best[1]))}</strong><p>${escape(labelDate(best[0]))}</p>` : ''}`;
 }
 
-function showHeatmap() {
-  const key = `${state.metric}-${state.city}`;
-  if (key === heatKey) return;
-  heatKey = key;
-  const maximum = state.metric === 'humidity' ? 100 : seriesMaximum(periods);
-  const rows = years.map(year => {
-    let available = 0;
-    const cells = SHORT.map((_, i) => {
-      const period = monthDate(year, i + 1);
-      const entry = reading(period);
-      if (entry.value !== null) available += 1;
-      const caption = escape(`${labelDate(period)}: ${display(entry.value)}`);
-      return `<td><button type="button" class="heat-cell${entry.value === null ? ' gap' : ''}" data-period="${period}" aria-pressed="false" aria-label="${caption}" title="${caption}" style="--cell-color:${kindColor(entry, maximum)}"><span aria-hidden="true">${isNumber(entry.value) ? escape(NUM.format(entry.value)) : entry.value === null ? '–' : '●'}</span></button></td>`;
+function showRecurrence() {
+  const month = numberMonth(state.recurrencePeriod);
+  const key = [month, state.city, state.metric].join('/');
+  const numeric = !categorical(state.metric);
+  if (key !== recurrencePlotKey) {
+    recurrencePlotKey = key;
+    const samples = years.map(year => {
+      const period = monthDate(year, month);
+      return { year, period, ...reading(period) };
+    });
+    const maximum = Math.max(0, ...samples.map(entry => entry.value).filter(isNumber)) || 1;
+    $('recurrenceMonthTitle').textContent = `${MONTHS[month - 1]} · ${years[0]}–${years.at(-1)}`;
+    $('recurrenceRows').classList.toggle('recurrence-categories', !numeric);
+    $('recurrenceRows').innerHTML = samples.map(entry => {
+      const available = entry.value !== null;
+      const label = !available ? 'Sem dados' : numeric ? display(entry.value) : CATEGORIES[entry.category]?.[0] ?? 'Com registro';
+      const detail = escape(`${labelDate(entry.period)} · ${available ? display(entry.value) : missingLabel(entry)}`);
+      const value = isNumber(entry.value) ? Math.max(0, entry.value / maximum * 100) : 0;
+      const track = numeric ? `<span class="recurrence-track" aria-hidden="true"><i style="--amount:${value}%"></i></span>` : '';
+      return `<li><button type="button" class="recurrence-row${available ? '' : ' unavailable'}" ${available ? `data-period="${entry.period}" aria-pressed="false"` : 'disabled'} data-recurrence-year="${entry.year}" aria-label="${detail}" title="${detail}"><span>${entry.year}</span>${track}<strong>${escape(label)}</strong></button></li>`;
     }).join('');
-    return `<tr><th scope="row">${year}${year === data.end ? '*' : ''}</th>${cells}<td class="year-coverage" title="${available} meses com ${categorical(state.metric) ? 'descrição' : 'valor'}"><span>${available}/12</span><meter min="0" max="12" value="${available}" aria-label="Meses com registro em ${year}"></meter></td></tr>`;
-  }).join('');
-  $('heatmap').innerHTML = `<table><thead><tr><th scope="col">Ano</th>${SHORT.map((month, i) => `<th scope="col" aria-label="${MONTHS[i]}">${month}</th>`).join('')}<th scope="col">Cobertura</th></tr></thead><tbody>${rows}</tbody></table>`;
-  const scale = state.metric === 'drought' ? ['advance', 'retreat', 'mixed', 'stable', 'other'] : state.metric === 'events' ? ['described', 'limited'] : null;
-  $('heatLegend').innerHTML = (scale ? scale.map(item => legend(CATEGORIES[item][0], CATEGORIES[item][1])).join('') :
-    legend('Valor menor', kindColor({ value: 0 }, maximum)) + legend('Valor maior', kindColor({ value: maximum || 1 }, maximum))) + legend('Sem valor', 'repeating-linear-gradient(-45deg,#e9eee7 0 3px,#f5f7f3 3px 6px)') + '<span class="scroll-hint">Deslize a grade para ver todos os meses.</span>';
-}
+  }
+  const year = yearOf(state.recurrencePeriod);
+  const list = $('recurrenceRows');
+  list.querySelector('[aria-current="true"]')?.removeAttribute('aria-current');
+  list.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+  const current = list.querySelector(`[data-recurrence-year="${year}"]`);
+  current?.setAttribute('aria-current', 'true');
+  if (current?.dataset.period) current.setAttribute('aria-pressed', 'true');
 
-function monthlyHistory(month) {
-  return years.map(year => reading(monthDate(year, month)).value);
-}
-
-function showSeason() {
-  const month = numberMonth(state.period);
-  const recurrence = data.recurring[state.metric === 'drought' ? 'goias' : state.city]?.[month];
-  const history = monthlyHistory(month).filter(isNumber).sort((a, b) => a - b);
-  const n = history.length;
-  const median = !n ? null : n % 2 ? history[(n - 1) / 2] : (history[n / 2 - 1] + history[n / 2]) / 2;
-  const numeric = ['rain', 'humidity', 'fire'].includes(state.metric);
-  const med = numeric ? `<p>${n ? `Mediana de ${MONTHS[month - 1].toLowerCase()} nos ${n} ${n === 1 ? 'ano com valor' : 'anos com valor'}: <strong>${escape(display(median))}</strong>.` : 'Sem valor numérico para este mês ao longo da série.'}</p>` : '';
-  const summary = recurrence && state.metric !== 'fire' ? `<p><strong>${escape(MONTHS[month - 1])} na aba de recorrência</strong> · ${escape(recurrence.label)}</p><p>${escape(recurrence.note)} ${recurrence.years ? `Anos informados: ${escape(recurrence.years)}.` : ''}</p><button type="button" class="source-jump" data-source-row="${month + 1}" data-source-sheet="${escape(recurrence.sheet)}">Abrir síntese na planilha</button>` : '';
-  const ranking = SHORT.map((label, i) => {
-    const valid = monthlyHistory(i + 1).filter(value => value !== null).length;
-    return `<button type="button" data-season-month="${i + 1}" aria-pressed="${month === i + 1}" aria-label="${MONTHS[i]}, ${valid} de ${years.length} anos com valor"><span>${label}</span><strong>${valid}/${years.length}</strong></button>`;
-  }).join('');
-  const focus = document.activeElement?.dataset?.seasonMonth;
-  $('seasonPattern').innerHTML = `<p class="eyebrow">Anos com registro por mês</p><div class="season-ranking" role="group" aria-label="Cobertura por mês">${ranking}</div><div class="season-note"><p class="eyebrow">${escape(MONTHS[month - 1])} · * 2026 parcial</p>${med}${summary}</div>`;
-  if (focus) $('seasonPattern').querySelector(`[data-season-month="${focus}"]`)?.focus({ preventScroll: true });
+  const detailKey = `${key}/${year}`;
+  if (detailKey === recurrenceDetailKey) return;
+  recurrenceDetailKey = detailKey;
+  const entry = reading(state.recurrencePeriod);
+  const rows = entry.record?.row ? [entry.record.row] : entry.record?.rows ?? [];
+  const links = entry.value === null ? '' : rows.map(row => `<button type="button" class="source-jump" data-source-row="${row}">Abrir linha ${row} na planilha</button>`).join('');
+  const summary = data.recurring[state.metric === 'drought' ? 'goias' : state.city]?.[month];
+  const synthesis = summary && state.metric !== 'fire' ? `<details><summary>Síntese da planilha</summary><p><strong>${escape(summary.label)}</strong></p><p>${escape(summary.note)} ${summary.years ? `Anos informados: ${escape(summary.years)}.` : ''}</p><button type="button" class="source-jump" data-source-row="${month + 1}" data-source-sheet="${escape(summary.sheet)}">Abrir síntese na planilha</button></details>` : '';
+  const detail = entry.value === null ? `<p>${escape(missingLabel(entry))}</p>` : links;
+  $('recurrenceDetail').innerHTML = `<h3>${escape(labelDate(state.recurrencePeriod))}</h3><p class="recurrence-value">${escape(entry.value === null ? 'Sem dados' : display(entry.value))}</p>${detail}${synthesis}`;
 }
 
 function showSelection() {
   const year = yearOf(state.period);
   $('year').value = year;
-  $('previousYear').disabled = year === years[0];
-  $('nextYear').disabled = year === years.at(-1);
+  $('chartYear').value = yearOf(state.chartPeriod);
+  $('recurrenceMonth').value = numberMonth(state.recurrencePeriod);
   const chartRange = $('chartRange');
   chartRange.setAttribute('aria-pressed', String(state.range === 'all'));
-  chartRange.textContent = state.range === 'all' ? `Voltar para ${year}` : 'Ver série 2017–2026';
-  player.render(state.period, MONTHS.map((_, index) => {
-    const { value } = reading(monthDate(year, index + 1));
-    return { label: isNumber(value) || value === null ? display(value) : 'Com registro', available: value !== null };
-  }));
-  $('city').value = state.mapFocus ?? '';
-  $('mapCityField').hidden = state.metric === 'drought';
+  chartRange.textContent = state.range === 'all' ? `Voltar para ${yearOf(state.chartPeriod)}` : 'Ver série 2017–2026';
+  player.render(state.period, MONTHS.map((_, index) => mapMonth(monthDate(year, index + 1))), wholeState(), `${state.metric}/${state.mapFocus ?? 'goias'}`);
+  $('city').value = state.mapFocus ?? 'goias';
+  $('city').disabled = state.metric === 'drought';
   for (const button of $('metrics').querySelectorAll('[data-metric]')) button.setAttribute('aria-pressed', button.dataset.metric === state.metric);
   for (const button of document.querySelectorAll('[data-chart]')) {
     button.disabled = button.dataset.chart === 'line' && categorical(state.metric);
     if (button.dataset.chart === 'column') button.textContent = categorical(state.metric) ? 'Faixas mensais' : 'Colunas';
     button.setAttribute('aria-pressed', button.dataset.chart === chartMode());
   }
-  for (const container of [$('annualChart'), $('heatmap')]) {
-    container.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
-    container.querySelector(`[data-period="${state.period}"]`)?.setAttribute('aria-pressed', 'true');
-  }
+  $('annualChart').querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+  $('annualChart').querySelector(`[data-period="${state.chartPeriod}"]`)?.setAttribute('aria-pressed', 'true');
 }
 
 function render() {
   $('painel').style.setProperty('--tone', METRICS[state.metric].tone);
-  setMapWeather(state.metric);
   showOverview();
   showReading();
-  renderAnnual(yearOf(state.period));
+  renderAnnual(yearOf(state.chartPeriod));
   showChartSummary();
-  showHeatmap();
-  showSeason();
+  showRecurrence();
   showSelection();
-  showStateObservation(state.period);
+  $('recurrencePlace').textContent = `${analysisPlace()} · ${METRICS[state.metric].title}`;
   $('exportLabel').textContent = `${state.metric === 'drought' ? 'Goiás' : data.municipalities[state.city].name} · ${METRICS[state.metric].title} · 2017–2026`;
 }
 
@@ -328,6 +363,16 @@ function setPeriod(period) {
 
 function stop() {
   player.stop();
+}
+
+function closestRecordedPeriod(period) {
+  if (reading(period).value !== null) return period;
+  const year = yearOf(period);
+  const month = numberMonth(period);
+  return SHORT.map((_, index) => index + 1)
+    .filter(candidate => reading(monthDate(year, candidate)).value !== null)
+    .sort((a, b) => Math.abs(a - month) - Math.abs(b - month))
+    .map(candidate => monthDate(year, candidate))[0] ?? period;
 }
 
 function csvCell(value) {
@@ -361,7 +406,8 @@ function selectCity(city) {
   stop();
   state.city = city;
   state.mapFocus = city;
-  render();
+  state.chartPeriod = closestRecordedPeriod(state.chartPeriod);
+  setPeriod(closestRecordedPeriod(state.period));
 }
 
 function selectMetric(metric) {
@@ -369,24 +415,29 @@ function selectMetric(metric) {
   stop();
   state.metric = metric;
   if (metric === 'drought') state.mapFocus = null;
-  render();
+  state.chartPeriod = closestRecordedPeriod(state.chartPeriod);
+  setPeriod(wholeState() ? state.period : closestRecordedPeriod(state.period));
 }
 
 function mount() {
   years = Array.from({ length: data.end - data.start + 1 }, (_, index) => data.start + index);
   periods = years.flatMap(year => SHORT.map((_, index) => monthDate(year, index + 1)));
   drawMap = mountMap(map, data.municipalities, selectCity);
-  setMapWeather = mountMapEffects();
-  player = mountPlayback(MONTHS, periods, setPeriod);
-  showStateObservation = mountStateClimate(data.drought, labelDate);
+  player = mountPlayback(MONTHS, periods, mapMonth, setPeriod);
+  const watchPeriod = mountStateClimate(data.drought, MONTHS, labelDate, INITIAL_PERIOD);
   $('metrics').innerHTML = Object.entries(METRICS).map(([id, info]) => `<button type="button" class="metric" data-metric="${id}" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="${info.icon}"></path></svg>${info.option}</button>`).join('');
   $('metrics').addEventListener('click', event => {
     const button = event.target.closest('[data-metric]');
     if (button) selectMetric(button.dataset.metric);
   });
-  $('showStateDrought').addEventListener('click', () => selectMetric('drought'));
+  $('showStateDrought').addEventListener('click', () => {
+    selectMetric('drought');
+    stop();
+    setPeriod(watchPeriod());
+  });
   $('mapResetView').addEventListener('click', () => {
     if (!state.mapFocus) return;
+    stop();
     state.mapFocus = null;
     render();
   });
@@ -396,38 +447,61 @@ function mount() {
     options.push(`<option value="${key}">${escape(value.name)}</option>`);
     byRegion.set(value.region, options);
   }
-  $('city').innerHTML = '<option value="" disabled>Escolher município</option>' +
+  $('city').innerHTML = '<option value="goias">Estado de Goiás</option>' +
     Array.from(byRegion, ([region, options]) => `<optgroup label="${escape(region)}">${options.join('')}</optgroup>`).join('');
-  $('city').addEventListener('change', event => selectCity(event.target.value));
-  $('year').innerHTML = years.map(year => `<option value="${year}">${year}${year === data.end ? ' (parcial)' : ''}</option>`).join('');
-  const selectYear = year => { stop(); setPeriod(monthDate(year, numberMonth(state.period))); };
-  $('year').addEventListener('change', event => selectYear(event.target.value));
-  $('previousYear').addEventListener('click', () => selectYear(yearOf(state.period) - 1));
-  $('nextYear').addEventListener('click', () => selectYear(yearOf(state.period) + 1));
-  $('chartRange').addEventListener('click', () => { stop(); state.range = state.range === 'year' ? 'all' : 'year'; render(); });
+  $('city').addEventListener('change', event => {
+    if (event.target.value === 'goias') $('mapResetView').click();
+    else selectCity(event.target.value);
+  });
+  const yearOptions = years.map(year => `<option value="${year}">${year}${year === data.end ? ' (parcial)' : ''}</option>`).join('');
+  for (const field of document.querySelectorAll('[data-panel-year]')) field.innerHTML = yearOptions;
+  $('year').addEventListener('change', event => {
+    const next = monthDate(event.target.value, numberMonth(state.period));
+    setPeriod(wholeState() ? next : closestRecordedPeriod(next));
+    player.resumeFromSelection();
+  });
+  $('chartYear').addEventListener('change', event => {
+    state.range = 'year';
+    state.chartPeriod = closestRecordedPeriod(monthDate(event.target.value, numberMonth(state.chartPeriod)));
+    render();
+  });
+  const monthOptions = MONTHS.map((month, index) => `<option value="${index + 1}">${month}</option>`).join('');
+  $('recurrenceMonth').innerHTML = monthOptions;
+  $('recurrenceMonth').addEventListener('change', event => {
+    state.recurrencePeriod = monthDate(yearOf(state.recurrencePeriod), event.target.value);
+    render();
+  });
+  $('chartRange').addEventListener('click', () => { state.range = state.range === 'year' ? 'all' : 'year'; render(); });
   for (const button of document.querySelectorAll('[data-chart]')) {
-    button.addEventListener('click', () => { stop(); state.chart = button.dataset.chart; render(); });
+    button.addEventListener('click', () => { state.chart = button.dataset.chart; render(); });
   }
   $('painel').addEventListener('click', event => {
     const source = event.target.closest('[data-source-row]');
     if (source && openWorkbookRow) { stop(); openWorkbookRow(source.dataset.sourceSheet || data.sheet, Number(source.dataset.sourceRow)); }
-    const month = event.target.closest('[data-season-month]');
-    if (month) { stop(); setPeriod(monthDate(yearOf(state.period), Number(month.dataset.seasonMonth))); }
   });
   $('annualChart').addEventListener('keydown', event => {
     const point = event.target.closest('.chart-point');
-    if (point && ['Enter', ' '].includes(event.key)) { event.preventDefault(); stop(); setPeriod(point.dataset.period); }
+    if (point?.dataset.period && ['Enter', ' '].includes(event.key)) {
+      event.preventDefault();
+      state.chartPeriod = point.dataset.period;
+      render();
+    }
   });
-  for (const container of [$('annualChart'), $('heatmap')]) {
+  for (const [container, key] of [[$('annualChart'), 'chartPeriod'], [$('recurrenceRows'), 'recurrencePeriod']]) {
     container.addEventListener('click', event => {
       const period = event.target.closest('[data-period]')?.dataset.period;
-      if (period) { stop(); setPeriod(period); }
+      if (period) {
+        state[key] = period;
+        render();
+      }
     });
   }
   $('exportCsv').addEventListener('click', download);
   render();
   $('painel').hidden = false;
   $('loading').hidden = true;
+  const initialSection = $(location.hash.slice(1));
+  if (initialSection && $('painel').contains(initialSection)) initialSection.scrollIntoView({ behavior: 'instant' });
   mountMenu();
 }
 

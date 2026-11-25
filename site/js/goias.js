@@ -65,11 +65,12 @@ function buildClimateChart(data) {
         <div><span>Diferença entre períodos</span><strong>${signed(difference)} <small>${unit}</small></strong></div>
       </div>
       <div class="climate-year">
-        <div><span id="stateYear"></span><strong id="stateYearValue"></strong><span id="stateAnomaly"></span></div>
-        <div class="climate-year-controls">
-          <button type="button" id="statePreviousYear" class="step-control" data-state-step="-1" aria-label="Ano anterior no gráfico estadual">‹</button>
-          <button type="button" id="stateNextYear" class="step-control" data-state-step="1" aria-label="Próximo ano no gráfico estadual">›</button>
+        <div class="date-navigation" role="group" aria-label="Ano do gráfico estadual">
+          <button type="button" class="date-arrow" id="statePreviousYear" data-year-step="-1" aria-label="Ano anterior no gráfico">‹</button>
+          <strong id="stateYear"></strong>
+          <button type="button" class="date-arrow" id="stateNextYear" data-year-step="1" aria-label="Próximo ano no gráfico">›</button>
         </div>
+        <div aria-live="polite"><strong id="stateYearValue"></strong><span id="stateAnomaly"></span></div>
       </div>
       <div class="climate-anomaly" aria-label="Desvio anual em relação a 1991–2020">
         <div class="climate-axis" aria-hidden="true"><span>+${format.format(scale)}</span><span>0 ${unit}</span><span>−${format.format(scale)}</span></div>
@@ -92,9 +93,9 @@ function buildClimateChart(data) {
   });
   chart.addEventListener('click', event => {
     const button = event.target.closest('[data-state-year]');
-    const stepper = event.target.closest('[data-state-step]');
     if (button) selectYear(Number(button.dataset.stateYear));
-    if (stepper) selectYear(selected + Number(stepper.dataset.stateStep));
+    const yearStep = event.target.closest('[data-year-step]');
+    if (yearStep) selectYear(selected + Number(yearStep.dataset.yearStep));
   });
   chart.addEventListener('keydown', event => {
     if (!event.target.matches('[data-state-year]')) return;
@@ -106,7 +107,7 @@ function buildClimateChart(data) {
   render();
 }
 
-export function mountStateClimate(drought, labelDate) {
+export function mountStateClimate(drought, names, labelDate, initialPeriod) {
   const observation = $('stateObservation');
   $('stateClimateNote').textContent = 'Carregando a série estadual…';
   fetch('assets/clima-goias.json')
@@ -120,10 +121,55 @@ export function mountStateClimate(drought, labelDate) {
       $('stateClimateNote').textContent = 'Série anual temporariamente indisponível.';
     });
 
-  let shownPeriod;
-  return function showStateObservation(period) {
-    if (period === shownPeriod) return;
-    shownPeriod = period;
+  const dates = Object.keys(drought).sort();
+  const years = [...new Set(dates.map(period => period.slice(0, 4)))];
+  let current = drought[initialPeriod] ? initialPeriod : dates[0] ?? initialPeriod;
+  const previous = $('watchPreviousYear');
+  const next = $('watchNextYear');
+  const buttons = names.map((name, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.watchMonth = String(index + 1);
+    button.textContent = name.slice(0, 3);
+    $('watchMonths').append(button);
+    return button;
+  });
+  const periodFor = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
+  for (const [offset, button] of [[-1, previous], [1, next]]) {
+    button.addEventListener('click', () => {
+      const year = years[years.indexOf(current.slice(0, 4)) + offset];
+      if (!year) return;
+      const sameMonth = year + current.slice(4);
+      const reference = Number(current.slice(5));
+      current = drought[sameMonth] ? sameMonth : dates.filter(period => period.startsWith(year))
+        .reduce((closest, candidate) => Math.abs(Number(candidate.slice(5)) - reference) < Math.abs(Number(closest.slice(5)) - reference) ? candidate : closest);
+      drawCalendar();
+    });
+  }
+  buttons.forEach((button, index) => button.addEventListener('click', () => {
+    current = periodFor(current.slice(0, 4), index + 1);
+    drawCalendar();
+  }));
+
+  function drawCalendar() {
+    const year = current.slice(0, 4);
+    $('watchYear').textContent = year;
+    const position = years.indexOf(year);
+    previous.disabled = position <= 0;
+    next.disabled = position < 0 || position === years.length - 1;
+    buttons.forEach((button, index) => {
+      const period = periodFor(year, index + 1);
+      const available = Boolean(drought[period]);
+      button.disabled = !available;
+      button.setAttribute('aria-pressed', String(period === current));
+      const label = labelDate(period) + (available ? '' : ' · Sem boletim registrado');
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    });
+    showStateObservation(current);
+  }
+
+  function showStateObservation(period) {
     const record = drought[period];
     const attention = record?.category === 'advance' || record?.category === 'mixed';
     observation.dataset.attention = String(attention);
@@ -134,5 +180,7 @@ export function mountStateClimate(drought, labelDate) {
       ${record ? `<p>${escape(record.source)}</p>
       <details><summary>Resumo do boletim registrado</summary><p>${escape(record.detail)}</p></details>
       <button type="button" class="source-jump" data-source-row="${record.row}">Abrir linha ${record.row} na planilha</button>` : ''}`;
-  };
+  }
+  drawCalendar();
+  return () => current;
 }
