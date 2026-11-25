@@ -4,15 +4,17 @@ import { mountWorkbook } from './planilha.js';
 import { mountMap } from './mapa.js';
 import { mountMenu } from './navegacao.js';
 import { mountPlayback } from './reproducao.js';
+import { mountMapEffects } from './efeitos-mapa.js';
+import { mountStateClimate } from './goias.js';
 
 const MONTHS = 'Janeiro Fevereiro Março Abril Maio Junho Julho Agosto Setembro Outubro Novembro Dezembro'.split(' ');
 const SHORT = MONTHS.map(month => month.slice(0, 3));
 const METRICS = {
-  rain: { title: 'Precipitação', option: 'Chuva', unit: 'mm', tone: '#268266', icon: 'M4 16a4 4 0 0 1 1-7.9 6 6 0 0 1 11-.7A4.5 4.5 0 0 1 19 16M7 17l-1 3m6-3-1 3m6-3-1 3' },
-  humidity: { title: 'Umidade relativa média', option: 'Umidade', unit: '%', tone: '#397e9a', icon: 'M12 3c2.6 4 6.5 8 6.5 12A6.5 6.5 0 0 1 5.5 15c0-4 3.9-8 6.5-12Zm-3 13a3 3 0 0 0 3 3' },
-  fire: { title: 'Média de queimadas', option: 'Queimadas', unit: '', tone: '#ad5c34', icon: 'M12 3c1 5-3 6-3 9-1-1-2-2-2-4a8 8 0 0 0-2.5 6A7.5 7.5 0 0 0 12 21c4.1 0 7.5-2.8 7.5-7 0-3.3-2.3-6.7-4.7-8.5.2 2.8-1.3 4.8-2 5.2.1-2.8.2-4.6-.8-7.7Z' },
+  rain: { title: 'Precipitação', option: 'Chuva', unit: 'mm', tone: '#3c8cbb', icon: 'M4 16a4 4 0 0 1 1-7.9 6 6 0 0 1 11-.7A4.5 4.5 0 0 1 19 16M7 17l-1 3m6-3-1 3m6-3-1 3' },
+  humidity: { title: 'Umidade relativa média', option: 'Umidade', unit: '%', tone: '#32958d', icon: 'M12 3c2.6 4 6.5 8 6.5 12A6.5 6.5 0 0 1 5.5 15c0-4 3.9-8 6.5-12Zm-3 13a3 3 0 0 0 3 3' },
+  fire: { title: 'Média de queimadas', option: 'Queimadas', unit: '', tone: '#be5b3a', icon: 'M12 3c1 5-3 6-3 9-1-1-2-2-2-4a8 8 0 0 0-2.5 6A7.5 7.5 0 0 0 12 21c4.1 0 7.5-2.8 7.5-7 0-3.3-2.3-6.7-4.7-8.5.2 2.8-1.3 4.8-2 5.2.1-2.8.2-4.6-.8-7.7Z' },
   drought: { title: 'Monitor de Secas', option: 'Seca', unit: '', tone: '#9d723a', icon: 'M3 19h18M5 15l4-4 4 2 5-5m-2 0h2v2M6 6h2m3 0h2m3 0h2' },
-  events: { title: 'Eventos climáticos', option: 'Eventos', unit: '', tone: '#668054', icon: 'M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h4' },
+  events: { title: 'Eventos climáticos', option: 'Eventos', unit: '', tone: '#8d79ad', icon: 'M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h4' },
 };
 const CATEGORIES = {
   mixed: ['Avanço e recuo', '#bdb0d7'], retreat: ['Recuo', '#a5d3bc'], advance: ['Avanço', '#e7b980'],
@@ -32,9 +34,11 @@ let data;
 let map;
 let periods;
 let years;
-const state = { metric: 'rain', city: 'posse', period: '2025-04', chart: 'line', range: 'year' };
+const state = { metric: 'rain', city: 'posse', mapFocus: null, period: '2025-04', chart: 'line', range: 'year' };
 let player;
 let drawMap;
+let setMapWeather;
+let showStateObservation;
 let openWorkbookRow;
 let chartKey = '';
 let heatKey = '';
@@ -109,7 +113,7 @@ function showOverview() {
   $('statMapDetail').textContent = statewide ? 'Monitor de Secas' : 'Municípios com registro';
   $('statYearLabel').textContent = `Cobertura em ${year}`;
   $('statYearValue').textContent = `${valid}/12`;
-  drawMap({ scope: statewide ? 'state' : 'municipal', city: state.city, entries, selected, maximum: mapMaximum(), display, tone: info.tone, categories: CATEGORIES, numeric: !categorical(state.metric), date: labelDate(state.period), metric: info.option });
+  drawMap({ scope: statewide ? 'state' : 'municipal', city: state.city, mapFocus: state.mapFocus, entries, selected, maximum: mapMaximum(), display, tone: info.tone, categories: CATEGORIES, numeric: !categorical(state.metric), date: labelDate(state.period), metric: info.option });
 }
 
 function showReading() {
@@ -283,7 +287,7 @@ function showSelection() {
     const { value } = reading(monthDate(year, index + 1));
     return { label: isNumber(value) || value === null ? display(value) : 'Com registro', available: value !== null };
   }));
-  $('city').value = state.city;
+  $('city').value = state.mapFocus ?? '';
   $('mapCityField').hidden = state.metric === 'drought';
   for (const button of $('metrics').querySelectorAll('[data-metric]')) button.setAttribute('aria-pressed', button.dataset.metric === state.metric);
   for (const button of document.querySelectorAll('[data-chart]')) {
@@ -299,6 +303,7 @@ function showSelection() {
 
 function render() {
   $('painel').style.setProperty('--tone', METRICS[state.metric].tone);
+  setMapWeather(state.metric);
   showOverview();
   showReading();
   renderAnnual(yearOf(state.period));
@@ -306,6 +311,7 @@ function render() {
   showHeatmap();
   showSeason();
   showSelection();
+  showStateObservation(state.period);
   $('exportLabel').textContent = `${state.metric === 'drought' ? 'Goiás' : data.municipalities[state.city].name} · ${METRICS[state.metric].title} · 2017–2026`;
 }
 
@@ -354,6 +360,15 @@ function selectCity(city) {
   if (!data.municipalities[city] || state.metric === 'drought') return;
   stop();
   state.city = city;
+  state.mapFocus = city;
+  render();
+}
+
+function selectMetric(metric) {
+  if (metric === state.metric) return;
+  stop();
+  state.metric = metric;
+  if (metric === 'drought') state.mapFocus = null;
   render();
 }
 
@@ -361,13 +376,18 @@ function mount() {
   years = Array.from({ length: data.end - data.start + 1 }, (_, index) => data.start + index);
   periods = years.flatMap(year => SHORT.map((_, index) => monthDate(year, index + 1)));
   drawMap = mountMap(map, data.municipalities, selectCity);
+  setMapWeather = mountMapEffects();
   player = mountPlayback(MONTHS, periods, setPeriod);
+  showStateObservation = mountStateClimate(data.drought, labelDate);
   $('metrics').innerHTML = Object.entries(METRICS).map(([id, info]) => `<button type="button" class="metric" data-metric="${id}" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="${info.icon}"></path></svg>${info.option}</button>`).join('');
   $('metrics').addEventListener('click', event => {
     const button = event.target.closest('[data-metric]');
-    if (!button || state.metric === button.dataset.metric) return;
-    stop();
-    state.metric = button.dataset.metric;
+    if (button) selectMetric(button.dataset.metric);
+  });
+  $('showStateDrought').addEventListener('click', () => selectMetric('drought'));
+  $('mapResetView').addEventListener('click', () => {
+    if (!state.mapFocus) return;
+    state.mapFocus = null;
     render();
   });
   const byRegion = new Map();
@@ -376,7 +396,8 @@ function mount() {
     options.push(`<option value="${key}">${escape(value.name)}</option>`);
     byRegion.set(value.region, options);
   }
-  $('city').innerHTML = Array.from(byRegion, ([region, options]) => `<optgroup label="${escape(region)}">${options.join('')}</optgroup>`).join('');
+  $('city').innerHTML = '<option value="" disabled>Escolher município</option>' +
+    Array.from(byRegion, ([region, options]) => `<optgroup label="${escape(region)}">${options.join('')}</optgroup>`).join('');
   $('city').addEventListener('change', event => selectCity(event.target.value));
   $('year').innerHTML = years.map(year => `<option value="${year}">${year}${year === data.end ? ' (parcial)' : ''}</option>`).join('');
   const selectYear = year => { stop(); setPeriod(monthDate(year, numberMonth(state.period))); };

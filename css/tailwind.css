@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @import "./experiencia.css";
 @import "./estacao.css";
+@import "./clima.css";
 @source "../site/index.html";
 @source "../site/js";
 

@@ -25,6 +25,7 @@
     <aside id="sideMenu" class="side-menu">
       <nav aria-label="Seções da análise">
         <a href="#territorio" aria-current="location"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15"/></svg>Mapa</a>
+        <a href="#goias"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18M5 15l4-5 4 2 6-7m-4 0h4v4"/></svg>Clima de Goiás</a>
         <a href="#series"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-4 3 2 5-6"/></svg>Gráficos</a>
         <a href="#recorrencia"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16m-11 4h2m3 0h2"/></svg>Recorrência</a>
         <a href="#planilha"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 14h16M10 9v11"/></svg>Planilha completa</a>
@@ -54,18 +55,30 @@
         <article class="panel map-panel" id="territorio" aria-labelledby="map-title">
           <div class="card-head map-heading">
             <h2 id="map-title">Mapa de Goiás</h2>
-            <label class="city-select" id="mapCityField"><span>Município</span><select id="city"></select></label>
+            <div class="map-navigation">
+              <label class="city-select" id="mapCityField"><span>Município</span><select id="city"></select></label>
+              <a href="#goias" class="map-state-link">Histórico climático <span aria-hidden="true">↓</span></a>
+            </div>
           </div>
-          <div class="map-wrap">
-            <div class="map-stamp" aria-hidden="true"><span id="mapMetric"></span><strong id="mapDate"></strong></div>
+          <div class="map-wrap" id="mapStage">
+            <div class="map-topline">
+              <div class="map-stamp" aria-hidden="true"><span id="mapMetric"></span><strong id="mapDate"></strong></div>
+              <button type="button" id="mapResetView" class="map-reset-view" aria-pressed="true" aria-controls="map">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
+                Estado inteiro
+              </button>
+            </div>
             <svg id="map" viewBox="0 0 600 475" aria-labelledby="mapSvgTitle"><title id="mapSvgTitle">Mapa dos municípios selecionados em Goiás</title></svg>
+            <div id="mapWeather" class="map-weather" aria-hidden="true"></div>
             <div id="mapPreview" class="map-preview" aria-hidden="true"></div>
+            <p class="sr-only" id="mapViewStatus" role="status"></p>
           </div>
           <div class="map-dock">
             <div id="metrics" class="metrics" role="group" aria-label="Indicador do mapa"></div>
             <div class="map-footer">
               <span id="mapScope"></span>
               <span id="mapLegend"></span>
+              <button type="button" id="toggleWeather" class="weather-toggle" aria-pressed="true">Efeitos ilustrativos</button>
               <span class="map-credit">Malha do IBGE</span>
             </div>
           </div>
@@ -110,6 +123,38 @@
         </article>
       </div>
 
+      <section class="panel state-panel" id="goias" aria-labelledby="stateTitle">
+        <div class="card-head">
+          <p class="eyebrow">Panorama estadual</p>
+          <h2 id="stateTitle">Mudanças do clima em Goiás</h2>
+          <p class="muted">Série histórica estadual e sinais para a vigilância climática.</p>
+        </div>
+        <div class="state-content">
+          <article id="stateClimate" class="state-climate" aria-labelledby="stateClimateTitle">
+            <div class="state-block-head">
+              <div><h3 id="stateClimateTitle">Clima de longo prazo</h3><p id="stateClimateNote" class="muted"></p></div>
+              <div class="state-metrics" role="group" aria-label="Indicador histórico de Goiás" hidden>
+                <button type="button" class="chart-switch" data-state-metric="temperature" aria-pressed="true">Temperatura</button>
+                <button type="button" class="chart-switch" data-state-metric="rain" aria-pressed="false">Chuva</button>
+              </div>
+            </div>
+            <div id="stateClimateChart"></div>
+            <p class="state-reference"><a href="https://goias.gov.br/imb/wp-content/uploads/sites/29/2025/12/Texto_para_discussao_003_2025_mudancas_climaticas_e_atividade_economica_em_goias.pdf" target="_blank" rel="noopener noreferrer">Estudo do IMB sobre Goiás · figuras 2 e 3</a></p>
+          </article>
+          <article class="state-watch" aria-labelledby="stateWatchTitle">
+            <h3 id="stateWatchTitle">Sinais e avisos</h3>
+            <p class="muted">Registro estadual do mês selecionado no mapa.</p>
+            <div class="state-observation" id="stateObservation"></div>
+            <a href="#territorio" id="showStateDrought" class="map-state-link">Ver seca no mapa <span aria-hidden="true">↑</span></a>
+            <div class="official-notices">
+              <h4>Avisos vigentes</h4>
+              <p>Consulte os canais que publicam avisos para Goiás.</p>
+              <a href="https://goias.gov.br/meioambiente/srh/cimehgo-3/cimehgo-alertas-e-boletins/" target="_blank" rel="noopener noreferrer">Alertas e boletins do CIMEHGO <span aria-hidden="true">↗</span></a>
+              <a href="https://avisos.inmet.gov.br/" target="_blank" rel="noopener noreferrer">Avisos meteorológicos do INMET <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <article class="panel chart-panel" id="series" aria-labelledby="chartTitle">
         <div class="card-head flex flex-wrap items-start justify-between gap-3">
