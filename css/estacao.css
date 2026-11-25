@@ -101,7 +101,8 @@ html .map-panel #timeline { margin: 11px 14px 14px; padding: 11px; border: 1px s
 .playback-head { justify-content: space-between; margin-bottom: 8px; }
 .playback-head h3 { font-size: clamp(.91rem,1.5vw,1.07rem); }
 .playback-head #period { margin-top: 2px; color: var(--accent); font-size: .78rem; font-weight: 600; }
-.year-select select { min-height: 36px; padding-block: 5px; font-size: .79rem; }
+.year-select select { inline-size: clamp(8.5rem, 17vw, 9.25rem); min-height: 36px; padding-block: 5px; font-size: .79rem; }
+#recurrenceMonth { inline-size: 8.5rem; }
 html .playback #play { display: inline-flex; min-width: 137px; justify-content: center; align-items: center; gap: 6px; min-height: 36px; padding: 6px 10px; border-radius: 6px; background: var(--accent-fill); color: var(--accent-copy); font-size: .77rem; white-space: nowrap; transition: box-shadow .25s, transform .2s, opacity .2s; }
 html .playback #play:hover:enabled { opacity: .87; transform: translateY(-1px); }
 #playIcon { width: 20px; height: 20px; fill: currentColor; }

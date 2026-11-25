@@ -138,15 +138,111 @@ html .metric { color: var(--muted); border-radius: 6px; padding-inline: 14px; }
 html .metric:hover { background: var(--surface-hover); color: var(--ink); }
 html .metric[aria-pressed="true"] { background: var(--accent-fill); color: var(--accent-copy); }
 
-html :is(select, .source-controls input) {
+html .source-controls input {
   border-color: var(--line-strong);
   border-radius: 6px;
   background-color: var(--surface);
   color: var(--ink);
 }
 
+html select {
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23245a47' fill='none' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-surface: linear-gradient(var(--surface), color-mix(in srgb, var(--surface-alt) 43%, var(--surface)));
+  appearance: none;
+  min-height: 40px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 41px 7px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background:
+    var(--select-chevron) right 12px center / 13px no-repeat,
+    radial-gradient(closest-side, var(--surface-hover) 97%, transparent) right 6px center / 25px no-repeat,
+    var(--select-surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px #12291f0d;
+  transition: background-color .18s, border-color .18s, box-shadow .18s, translate .18s;
+}
+
 html[data-theme="dark"] select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23c7dccf' fill='none' stroke-width='1.6'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23b2dbbf' fill='none' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+html select:enabled:hover { border-color: var(--accent); box-shadow: 0 3px 9px #18372f17; translate: 0 -1px; }
+html select:enabled:active { translate: 0 1px; }
+html select:focus-visible { border-color: var(--accent); outline-width: 2px; outline-offset: 2px; }
+html select:disabled { box-shadow: none; }
+html #city { width: min(13.75rem, 64vw); }
+html #sourceSheet { width: min(18rem, 82vw); }
+
+@supports (appearance: base-select) and selector(select::picker(select)) {
+  html select, html select::picker(select) { appearance: base-select; }
+  html select {
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    padding-inline-end: 6px;
+    background: var(--select-surface);
+  }
+  html select::picker-icon {
+    content: '';
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--select-chevron) center / 13px no-repeat var(--surface-hover);
+    transition: transform .2s ease, background-color .2s ease;
+  }
+  html select:open {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    translate: none;
+  }
+  html select:open::picker-icon { transform: rotate(180deg); }
+  html select::picker(select) {
+    max-block-size: min(340px, 64dvh);
+    max-inline-size: calc(100% - 16px);
+    overflow: auto;
+    padding: 6px;
+    margin-block: 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 12px 28px #0b22192b, 0 2px 4px #0b221919;
+    opacity: 0;
+    transform: translateY(-3px) scale(.985);
+    transition: opacity .16s, transform .2s, display .2s, overlay .2s;
+    transition-behavior: allow-discrete;
+  }
+  html select:open::picker(select) { opacity: 1; transform: none; }
+  @starting-style {
+    html select:open::picker(select) { opacity: 0; transform: translateY(-3px) scale(.985); }
+  }
+  html select option {
+    gap: 8px;
+    min-height: 36px;
+    padding: 6px 9px;
+    border-radius: 5px;
+    color: var(--ink);
+    font-size: .8rem;
+    white-space: normal;
+    cursor: pointer;
+  }
+  html select option::checkmark { color: var(--accent); }
+  html select option:enabled:is(:hover, :focus-visible) { background: var(--surface-hover); }
+  html select option:checked { background: var(--surface-alt); color: var(--accent); font-weight: 600; }
+  html select option:disabled { color: var(--muted); cursor: default; }
+  html select optgroup { padding: 4px 2px 2px; color: var(--muted); font-size: .71rem; }
+  html select optgroup + optgroup { border-top: 1px solid var(--line); }
+  @media (prefers-reduced-motion: reduce) {
+    html select::picker(select), html select::picker-icon { transition: none; }
+  }
+}
+
+@media (forced-colors: active) {
+  html select { appearance: auto; background: Canvas; color: CanvasText; border-color: ButtonText; }
 }
 
 html .overview { grid-template-columns: minmax(0, 1.24fr) minmax(0, .76fr); }
