@@ -1,0 +1,64 @@
+# Clima em Goiás
+
+Painel local do PET-Saúde Clima, GAT 1. O recorte de navegação é janeiro de 2017 a dezembro de 2026, com cobertura parcial em 2026. O mapa tem controles de zoom e camadas para municípios, indicador e disponibilidade. Os gráficos oferecem linha, colunas, faixas mensais para classificações e pizza para a distribuição dos meses. A matriz de recorrência mostra o registro e a cobertura por mês e ano. O tema claro ou escuro é salvo no navegador.
+
+**Origem conferida em 25/11/2026.** O XLSX recebido, a exportação atual do Google Sheets e o JSON do painel coincidiram nas nove abas, nos valores tipados das 12.504 células preenchidas e na nota de Posse A2. O endereço com `gid=1626095015` abre a aba de recorrência de Goiânia, com 52 células preenchidas. [Conferência registrada](fontes/verificacao-integral.json) · [Aba de Goiânia](https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=1626095015#gid=1626095015)
+
+Na seção **Planilha completa**, use o seletor de abas, a busca e a paginação para consultar os valores originais. O botão **Abrir linha na planilha** leva da visualização à linha que a originou. O JSON integral inclui as notas e as coordenadas originais das células. Células vazias são representadas por um traço na interface. A cópia local é a versão usada pelo site, com atualização manual.
+
+## Executar no Visual Studio
+
+No terminal aberto nesta pasta, rode:
+
+```powershell
+python app.py
+```
+
+Abra [http://127.0.0.1:8000/](http://127.0.0.1:8000/). Use `Ctrl+C` no terminal para parar. Se a porta estiver ocupada, execute `python app.py --port 8001` e abra o endereço impresso. O servidor usa a biblioteca padrão do Python e só expõe `site/`. O CSS e os dados já estão compilados.
+
+## Onde editar
+
+| Caminho | Conteúdo |
+| --- | --- |
+| `site/index.html` | Página e informações de metodologia |
+| `site/js/` | Mapa, gráficos, filtros, recorrência, CSV, explorador da planilha e tema |
+| `css/tailwind.css` | Fonte da folha de estilos. A saída compilada fica em `site/css/painel.css` |
+| `site/assets/` | Dados JSON tratados, malha projetada e ícone |
+| `fontes/originais/` | Cópias locais dos anexos e das malhas de origem |
+| `fontes/auditoria.json` | Contagens do processamento e linhas com divergência de estação |
+| `scripts/preparar_dados.py` | Leitura, validação e construção dos JSON analíticos |
+| `scripts/exportar_planilha.py` | Exportação integral por célula para consulta e download |
+
+Para regenerar os dados após conferir uma nova versão da planilha:
+
+```powershell
+python -m pip install -r requirements.txt
+python scripts/preparar_dados.py --planilha 'C:\caminho\mapeamento por região.xlsx'
+python scripts/exportar_planilha.py --planilha 'C:\caminho\mapeamento por região.xlsx'
+```
+
+Sem `--planilha`, os dois scripts usam `fontes/originais/mapeamento por região.xlsx`. Rode ambos com o mesmo arquivo porque o painel verifica o SHA-256 da base antes de relacionar os gráficos às linhas. A opção `--baixar-mapa` do primeiro script atualiza a cartografia. Para editar os estilos, use `npm.cmd ci` uma vez e `npm.cmd run build:css` após as alterações. A fonte Poppins é servida localmente com a [licença SIL Open Font License](site/assets/poppins-OFL.txt).
+
+## Origem e critérios
+
+- A base é o XLSX fornecido, com **1.656 linhas datadas** na aba global. O ZIP contém a exportação HTML das mesmas nove abas. Foi conferida a estrutura do ZIP e uma amostra da aba global. Os dois formatos não foram somados.
+- São sete municípios distribuídos pelos cinco rótulos de região da planilha. Goiânia é Centro, Luziânia é Leste, Posse é Nordeste e São Miguel do Araguaia é Noroeste. O Sul tem Catalão, Mineiros e Rio Verde. Os limites das regiões de estudo não foram definidos, então o mapa mostra os municípios.
+- O processamento extrai números de precipitação acumulada em mm e umidade relativa **média** em %. Lê padrões explícitos nas descrições das colunas E e F, priorizando E. Mínimas e limiares de umidade ficam no texto. Se a linha registra insuficiência geral ou cobertura quantitativa inferior a 80% para a variável, o valor fica ausente. O limiar de 80% foi adotado para a visualização e aparece na própria planilha em parte das linhas. A cobertura pode estar sem informação. Meses cuja descrição é apenas qualitativa ficam em **Eventos**.
+- Códigos de estação conflitantes e registros meteorológicos duplicados ficam fora das séries numéricas. O relatório registra as linhas a revisar. Na planilha recebida, há 61 linhas com códigos divergentes e 12 meses duplicados após normalização dos nomes. Os IDs cartográficos e as referências de estação são explícitos no script.
+- A coluna I contém **médias de queimadas** de Posse, Rio Verde e São Miguel do Araguaia. Os valores são preservados, inclusive zeros. O significado da escala e a forma de cálculo não constam na planilha. Campos em branco, `NÃO CONSTA` e linhas sem município identificado ficam fora das séries numéricas. A coluna de quantidade estadual não tem valores numéricos aproveitáveis. A página não usa essas médias para calcular totais ou afirmar tendência de focos.
+- Os 68 registros do Monitor de Secas vão de janeiro de 2021 a outubro de 2026. As categorias do painel resumem o movimento descrito para Goiás. O boletim da SEMAD/CIMEHGO de **abril de 2025** tem 12 páginas e foi recebido como referência, com a página 5 física conferida no mapa estadual. O boletim não preenche as lacunas da série e seus polígonos de seca não foram vetorizados.
+- A grade compara meses homólogos ao longo dos anos. A mediana usa só os valores extraídos para o mês e mostra quantos anos entram no cálculo. A escala do gráfico se mantém para o mesmo município e indicador ao trocar o ano. A síntese textual de recorrência vem das abas originais e pode incluir anos com descrições qualitativas. O CSV exporta os 120 meses do indicador e local selecionados, com valor, situação, linha e fonte informada.
+- A cartografia usa a API de Malhas do IBGE, qualidade mínima e os 246 municípios de Goiás. Os marcadores indicam posições aproximadas calculadas das geometrias, com ajuste visual de rótulo. As fontes meteorológicas foram identificadas na planilha, sem recomputar as séries a partir das observações horárias.
+
+## Publicação futura
+
+`site/` é a saída estática. O navegador usa HTML, CSS, JavaScript e JSON locais com caminhos relativos. O Python prepara os dados antes da publicação e serve a versão de desenvolvimento. O GitHub Pages pode receber o conteúdo de `site/` como artefato de uma futura ação de publicação. O plano da conta precisa aceitar Pages para o repositório privado e a visibilidade do site deve ser conferida separadamente da visibilidade do repositório. Para publicação com acesso restrito, confirme a opção disponível na conta antes de enviar os dados.
+
+O SharePoint fica como possível origem de arquivos para a equipe em uma etapa posterior. Nesta etapa, a importação usa o XLSX local e funciona sem conta ou plugin de armazenamento.
+
+## Referências
+
+- [Planilha de mapeamento do GAT 1](https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=0#gid=0), cuja exportação XLSX foi conferida por coordenada e conteúdo em 25/11/2026.
+- [INMET](https://portal.inmet.gov.br/dadoshistoricos), [BDQueimadas/INPE](https://terrabrasilis.dpi.inpe.br/queimadas/bdqueimadas/), [Monitor de Secas/ANA](https://monitordesecas.ana.gov.br/) e [Boletins SEMAD/CIMEHGO](https://goias.gov.br/meioambiente/srh/cimehgo-3/cimehgo-alertas-e-boletins/), conforme fontes indicadas no material recebido.
+- [Malha municipal do IBGE](https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html). Dados de estado e municípios obtidos em 25/11/2026 e registrados em `fontes/manifesto.json`.
+- [Tailwind CLI](https://tailwindcss.com/docs/installation/tailwind-cli) e [configuração do GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), consultados em 25/11/2026.

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Painel do PET-Saúde Clima para explorar registros mensais de chuva, umidade, seca e queimadas em Goiás.">
+  <title>Clima em Goiás · PET-Saúde Clima</title>
+  <link rel="icon" href="assets/marca.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/poppins-regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/painel.css">
+  <script type="module" src="js/painel.js"></script>
+</head>
+<body>
+  <a class="skip" href="#painel">Pular para o painel</a>
+  <header class="topbar">
+    <div class="frame flex items-center justify-between gap-4">
+      <a href="./" class="brand"><img src="assets/marca.svg" alt="" width="40" height="40"><span>PET-Saúde Clima<small>GAT 1 · Goiás</small></span></a>
+      <nav class="flex items-center gap-5" aria-label="Navegação principal"><a href="#painel">Painel</a><a href="#planilha">Planilha</a></nav>
+      <button type="button" id="themeToggle" class="theme-switch" aria-pressed="false" aria-label="Ativar modo escuro"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Escuro</span></button>
+    </div>
+  </header>
+
+  <main class="frame">
+    <section class="intro" aria-labelledby="titulo">
+      <div class="intro-copy">
+        <p class="eyebrow"><span class="status-dot"></span> Vigilância em saúde climática</p>
+        <h1 id="titulo">Clima em Goiás</h1>
+        <p>Séries de chuva, umidade, seca e queimadas da planilha de mapeamento regional.</p>
+      </div>
+      <div class="intro-period"><strong>2017–2026</strong><span>Registros mensais · 2026 parcial</span></div>
+    </section>
+
+    <div id="loading" class="loading" role="status">Carregando o painel…</div>
+    <section id="painel" aria-label="Painel interativo" hidden>
+      <nav class="jump-links" aria-label="Seções da análise"><a href="#territorio">Mapa</a><a href="#series">Gráficos</a><a href="#recorrencia">Recorrência</a><a href="#planilha">Planilha completa</a></nav>
+      <div class="toolbar panel flex flex-wrap items-center justify-between gap-4">
+        <div id="metrics" class="metrics" role="group" aria-label="Indicador"></div>
+        <label class="city-select"><span>Município</span><select id="city" aria-label="Município"></select></label>
+      </div>
+
+      <div class="overview grid gap-5">
+        <article class="panel map-panel" id="territorio" aria-labelledby="map-title">
+          <div class="card-head flex flex-wrap items-start justify-between gap-2">
+            <div><p class="eyebrow">Território</p><h2 id="map-title">Municípios da planilha</h2></div>
+            <span id="mapScope" class="soft-tag">7 municípios · 5 regiões</span>
+          </div>
+          <div class="geo-controls" aria-label="Camadas e zoom do mapa">
+            <label class="geo-control"><span>Camada</span><select id="mapLayer"><option value="points">Municípios</option><option value="metric">Indicador no mês</option><option value="coverage">Disponibilidade no mês</option></select></label>
+            <label class="geo-control map-check"><input type="checkbox" id="mapMesh" checked> Limites</label>
+            <div class="geo-zoom" role="group" aria-label="Zoom do mapa">
+              <button class="geo-control" type="button" id="zoomIn" aria-label="Aproximar mapa">+</button>
+              <button class="geo-control" type="button" id="zoomOut" aria-label="Afastar mapa">−</button>
+              <button class="geo-control" type="button" id="zoomReset">Recentrar</button>
+            </div>
+          </div>
+          <div class="map-wrap">
+            <svg id="map" viewBox="0 0 600 475" aria-labelledby="mapSvgTitle"><title id="mapSvgTitle">Mapa dos municípios selecionados em Goiás</title></svg>
+          </div>
+          <div class="map-footer flex flex-wrap items-center justify-between gap-2">
+            <span id="mapLegend"><i class="selected-dot"></i> Município selecionado</span><span>Malha simplificada · IBGE</span>
+          </div>
+        </article>
+
+        <article class="panel detail-panel" aria-labelledby="placeName">
+          <div class="card-head">
+            <p id="placeRegion" class="eyebrow"></p>
+            <h2 id="placeName"></h2>
+            <p id="placeStation" class="muted"></p>
+          </div>
+          <div class="period-box">
+            <div class="flex items-center justify-between gap-3">
+              <div><p class="eyebrow">Mês selecionado</p><strong id="period"></strong></div>
+              <div class="step-controls flex items-center gap-2" aria-label="Navegação mensal">
+                <button type="button" id="previous" title="Mês anterior" aria-label="Mês anterior">‹</button>
+                <button type="button" id="next" title="Próximo mês" aria-label="Próximo mês">›</button>
+              </div>
+            </div>
+            <label class="sr-only" for="timeline">Mês na linha do tempo</label>
+            <input type="range" id="timeline" min="0" value="0" step="1">
+            <div class="range-caption flex items-center justify-between gap-2"><span>2017</span><button type="button" id="play"><span id="playIcon" aria-hidden="true">▶</span><span id="playLabel">Reproduzir</span></button><span>2026</span></div>
+          </div>
+          <div id="valueCard" class="value-card" aria-live="polite"></div>
+          <div id="monthDetail" class="month-detail"></div>
+        </article>
+      </div>
+
+      <article class="panel chart-panel" id="series" aria-labelledby="chartTitle">
+        <div class="card-head flex flex-wrap items-start justify-between gap-3">
+          <div><p class="eyebrow">Linha do tempo</p><h2 id="chartTitle"></h2><p id="chartCaption" class="muted"></p></div>
+          <label class="year-select"><span>Ano</span><select id="year" aria-label="Ano da série"></select></label>
+        </div>
+        <div class="chart-modes" role="group" aria-label="Tipo de gráfico">
+          <button type="button" class="chart-switch" data-chart="line" aria-pressed="true">Linha</button>
+          <button type="button" class="chart-switch" data-chart="column" aria-pressed="false">Colunas</button>
+          <button type="button" class="chart-switch" data-chart="pie" aria-pressed="false">Pizza</button>
+          <label class="year-select" id="chartRangeLabel"><span>Período</span><select id="chartRange" aria-label="Período do gráfico"><option value="year">Ano escolhido</option><option value="all">2017–2026</option></select></label>
+        </div>
+        <div class="chart-layout"><div id="annualChart" class="annual-chart"></div><aside id="chartSummary" class="chart-summary" aria-label="Resumo do gráfico"></aside></div>
+        <div id="chartLegend" class="chart-legend"></div>
+      </article>
+
+      <article class="panel recurrence-panel" id="recorrencia" aria-labelledby="recurrenceTitle">
+        <div class="card-head">
+          <p class="eyebrow">Comparação entre anos</p><h2 id="recurrenceTitle">Recorrência mês a mês</h2>
+          <p class="muted">Compare o mesmo mês entre anos. Cada célula abre o registro e a última coluna mostra a cobertura do ano.</p>
+        </div>
+        <div id="heatmap" class="heatmap" role="region" aria-label="Grade de comparação por mês e ano" tabindex="0"></div>
+        <div id="heatLegend" class="chart-legend"></div>
+        <div id="seasonPattern" class="season-pattern"></div>
+      </article>
+
+      <div class="extract flex flex-wrap items-center justify-between gap-3">
+        <div><strong>Leve a série para a planilha</strong><p id="exportLabel"></p></div>
+        <button type="button" id="exportCsv" class="export-button">Baixar CSV</button>
+      </div>
+    </section>
+
+    <section id="planilha" class="panel source-explorer" aria-labelledby="sourceTitle">
+      <div class="card-head flex flex-wrap items-start justify-between gap-3">
+        <div><p class="eyebrow">Base de trabalho</p><h2 id="sourceTitle">Planilha completa</h2><p id="sourceIntro" class="muted">Consulte os valores e textos das abas, com a numeração original das linhas.</p></div>
+        <a href="assets/planilha.json" download="planilha-gat1-integral.json" class="export-button">Baixar JSON integral</a>
+      </div>
+      <div class="source-controls">
+        <label><span>Aba</span><select id="sourceSheet" aria-label="Aba da planilha"></select></label>
+        <label><span>Buscar nesta aba</span><input id="sourceSearch" type="search" placeholder="Município, ano ou palavra" maxlength="160"></label>
+      </div>
+      <p id="sourceCounts" class="muted" aria-live="polite"></p>
+      <div class="source-grid" id="sourceGrid" role="region" aria-label="Valores da planilha" tabindex="0"></div>
+      <div class="source-pagination" id="sourcePagination">
+        <button class="geo-control" type="button" id="sourcePrev">Anterior</button><span id="sourcePage"></span><button class="geo-control" type="button" id="sourceNext">Próxima</button>
+      </div>
+    </section>
+
+    <section id="metodo" class="method" aria-labelledby="methodTitle">
+      <div>
+        <p class="eyebrow">Origem e leitura dos dados</p><h2 id="methodTitle">Como o painel foi feito</h2>
+        <p>Os municípios e os registros vêm da planilha do GAT 1. O mapa usa limites municipais do IBGE e pontos aproximados no centro dos municípios. As regiões são os rótulos usados na planilha.</p>
+        <p>Chuva e umidade média usam valores mensais explícitos no texto. Meses com dados insuficientes, duplicidade ou código de estação divergente ficam disponíveis na planilha completa. Os gráficos numéricos usam o critério de 80% quando a cobertura da variável é informada.</p>
+        <p>A aba de eventos mostra descrições da base. As médias de queimadas são os valores lançados na coluna da planilha, cuja unidade e método não estão documentados. A seca tem leitura estadual e registros de janeiro de 2021 a outubro de 2026. As sínteses nas abas de recorrência são apresentadas como constam na planilha.</p>
+        <p>O Boletim Mensal de Seca da SEMAD/CIMEHGO de abril de 2025 foi consultado para contextualizar a leitura estadual.</p>
+      </div>
+      <div class="source-links">
+        <h3>Fontes para consulta</h3>
+        <a href="https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=0#gid=0">Planilha de mapeamento do GAT 1</a>
+        <a href="https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=1626095015#gid=1626095015">Aba de recorrência de Goiânia</a>
+        <a href="https://portal.inmet.gov.br/dadoshistoricos">INMET · Dados meteorológicos históricos</a>
+        <a href="https://terrabrasilis.dpi.inpe.br/queimadas/bdqueimadas/">INPE · Banco de Dados de Queimadas</a>
+        <a href="https://monitordesecas.ana.gov.br/">ANA · Monitor de Secas</a>
+        <a href="https://goias.gov.br/meioambiente/srh/cimehgo-3/cimehgo-alertas-e-boletins/">SEMAD/CIMEHGO · Boletins de Goiás</a>
+        <a href="https://www.ibge.gov.br/geociencias/organizacao-do-territorio/malhas-territoriais/15774-malhas.html">IBGE · Malha municipal</a>
+      </div>
+    </section>
+    <footer class="footer flex flex-wrap justify-between gap-2"><span>PET-Saúde Clima · GAT 1</span><span>Goiás · Série histórica</span></footer>
+  </main>
+</body>
+</html>

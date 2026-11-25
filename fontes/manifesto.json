@@ -1,0 +1,38 @@
+[
+  {
+    "id": "XLS-003",
+    "arquivo": "fontes/originais/mapeamento por região.xlsx",
+    "bytes": 2868657,
+    "sha256": "06fe70b4b12ece7341cad25504a5e2ef8ec14b2220718e8f1986dbde927bda6d",
+    "url_da_fonte": "https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=0#gid=0"
+  },
+  {
+    "id": "ZIP-001",
+    "arquivo": "fontes/originais/mapeamento por região.zip",
+    "bytes": 133052,
+    "sha256": "8a00ac9509caa3dcc69aac5c2cafbe1911eec1e995845a43305d2dff92367ead",
+    "url_da_fonte": "https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/edit?gid=0#gid=0"
+  },
+  {
+    "id": "DOC-023",
+    "arquivo": "fontes/originais/MONITOR_SECAS_(04)_ABR.pdf",
+    "bytes": 6693940,
+    "sha256": "963c1a3977eddd39b64fe10e47c0da23174cecde2d588d603ed4bd0010ad7b8b",
+    "paginas": 12,
+    "data_do_material": "abril de 2025, conforme capa"
+  },
+  {
+    "arquivo": "fontes/originais/ibge-goias.geojson",
+    "url_da_fonte": "https://servicodados.ibge.gov.br/api/v3/malhas/estados/52?formato=application/vnd.geo+json&qualidade=minima",
+    "baixa_em": "2026-11-25",
+    "bytes": 5143,
+    "sha256": "08dcf8e346e6bf09da2da81f8b9d93328fe096954bc8218b7b5241b364168c02"
+  },
+  {
+    "arquivo": "fontes/originais/ibge-municipios-goias.geojson",
+    "url_da_fonte": "https://servicodados.ibge.gov.br/api/v3/malhas/estados/52?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=municipio",
+    "baixa_em": "2026-11-25",
+    "bytes": 194060,
+    "sha256": "d73b419ae68447077d63744f86850e8442312206ecef8ecbf173386eaeada08e"
+  }
+]

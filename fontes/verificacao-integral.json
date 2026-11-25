@@ -1,0 +1,70 @@
+{
+  "data": "2026-11-25",
+  "fonte_xlsx": "https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/export?format=xlsx",
+  "fonte_aba_goiania": "https://docs.google.com/spreadsheets/d/1BZH6Bnt79nS3wh1PDnRto2QGe8bb5wJNgu5nefpjFF0/gviz/tq?tqx=out:csv&gid=1626095015",
+  "http_xlsx": 200,
+  "metodo": "Comparação por aba, linha, coluna e valor tipado, com a nota da célula preservada. JSON do painel confrontado com o XLSX local.",
+  "sha256_xlsx_recebido": "06fe70b4b12ece7341cad25504a5e2ef8ec14b2220718e8f1986dbde927bda6d",
+  "sha256_xlsx_google_na_conferencia": "13486ac3530cb96033f640b73b4a525b9a0c09b0187acd112fbba2b0d79cf61e",
+  "sha256_exportacao_integral": "29a5270b8c39d25cc4121fcecdef4e30989522e1a09cfecd25ac589d59a2843a",
+  "abas": [
+    {
+      "nome": "PLANILHA GLOBAL ",
+      "ultima_linha_com_conteudo": 1657,
+      "colunas": 11,
+      "celulas": 12088
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO- SÃO MIGUEL",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO- CATALÃO",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO- POSSE",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO- MINEIROS",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO- Luziania",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": " PADRÃO DE REPETIÇÃO- Rio Verde",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO - SECA",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    },
+    {
+      "nome": "PADRÃO DE REPETIÇÃO- Goiânia",
+      "ultima_linha_com_conteudo": 13,
+      "colunas": 4,
+      "celulas": 52
+    }
+  ],
+  "total_celulas_preenchidas": 12504,
+  "celulas_aba_goiania": 52,
+  "notas": 1,
+  "divergencias_por_celula": 0
+}
